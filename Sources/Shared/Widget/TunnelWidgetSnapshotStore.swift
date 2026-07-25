@@ -8,13 +8,11 @@ protocol TunnelWidgetTransitionClock {
     func now() -> TunnelWidgetTransitionOrder?
 }
 
-protocol TunnelWidgetBootSessionIdentifierProvider {
+protocol WidgetBootSessionProvider {
     func identifier() -> String?
 }
 
-struct TunnelWidgetDarwinBootSessionIdentifierProvider:
-    TunnelWidgetBootSessionIdentifierProvider
-{
+struct DarwinBootSessionProvider: WidgetBootSessionProvider {
     func identifier() -> String? {
         var requiredSize = 0
         guard sysctlbyname("kern.bootsessionuuid", nil, &requiredSize, nil, 0) == 0,
@@ -50,8 +48,8 @@ struct TunnelWidgetSystemTransitionClock: TunnelWidgetTransitionClock {
     private let bootSessionIdentifier: String?
 
     init(
-        bootSessionIdentifierProvider: TunnelWidgetBootSessionIdentifierProvider =
-            TunnelWidgetDarwinBootSessionIdentifierProvider()
+        bootSessionIdentifierProvider: WidgetBootSessionProvider =
+            DarwinBootSessionProvider()
     ) {
         bootSessionIdentifier = bootSessionIdentifierProvider.identifier()
     }
@@ -128,8 +126,7 @@ final class TunnelWidgetSnapshotFileBackend: TunnelWidgetSnapshotBackend {
             if let existingOrder = existingSnapshot?.transitionOrder,
                let proposedOrder = snapshot.transitionOrder,
                existingOrder.bootSessionIdentifier == proposedOrder.bootSessionIdentifier,
-               proposedOrder.monotonicTimestamp <= existingOrder.monotonicTimestamp
-            {
+               proposedOrder.monotonicTimestamp <= existingOrder.monotonicTimestamp {
                 return
             }
 

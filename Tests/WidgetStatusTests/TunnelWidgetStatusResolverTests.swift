@@ -22,7 +22,7 @@ private enum TunnelWidgetStatusResolverTests {
         for state in [
             TunnelWidgetStatusCandidate.State.activating,
             .reasserting,
-            .restarting,
+            .restarting
         ] {
             assertResolution(
                 [TunnelWidgetStatusCandidate(state: state, tunnelName: "Home")],
@@ -41,14 +41,14 @@ private enum TunnelWidgetStatusResolverTests {
         assertResolution(
             [
                 TunnelWidgetStatusCandidate(state: .waiting, tunnelName: "Office"),
-                TunnelWidgetStatusCandidate(state: .active, tunnelName: "Home"),
+                TunnelWidgetStatusCandidate(state: .active, tunnelName: "Home")
             ],
             equals: TunnelWidgetResolvedStatus(status: .connected, tunnelName: "Home")
         )
         assertResolution(
             [
                 TunnelWidgetStatusCandidate(state: .waiting, tunnelName: "Office"),
-                TunnelWidgetStatusCandidate(state: .deactivating, tunnelName: "Home"),
+                TunnelWidgetStatusCandidate(state: .deactivating, tunnelName: "Home")
             ],
             equals: TunnelWidgetResolvedStatus(status: .disconnecting, tunnelName: "Home")
         )

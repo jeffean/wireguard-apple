@@ -21,7 +21,7 @@ private enum TunnelConfigurationMigrationTests {
         let result = TunnelProviderConfigurationMigrator.migrate(
             [
                 "WgQuickConfig": "legacy",
-                "UnrelatedKey": "preserved",
+                "UnrelatedKey": "preserved"
             ],
             tunnelName: "Home"
         )

@@ -101,8 +101,8 @@ private enum TunnelWidgetSnapshotTests {
     }
 
     private static func testProductionBootSessionIdentifier() {
-        let firstIdentifier = TunnelWidgetDarwinBootSessionIdentifierProvider().identifier()
-        let secondIdentifier = TunnelWidgetDarwinBootSessionIdentifierProvider().identifier()
+        let firstIdentifier = DarwinBootSessionProvider().identifier()
+        let secondIdentifier = DarwinBootSessionProvider().identifier()
 
         expect(firstIdentifier != nil, "Darwin exposes a boot session identifier")
         expect(firstIdentifier == secondIdentifier, "Boot session identifier is system-global")
@@ -240,9 +240,7 @@ private final class TestTransitionClock: TunnelWidgetTransitionClock {
     }
 }
 
-private struct UnavailableBootSessionIdentifierProvider:
-    TunnelWidgetBootSessionIdentifierProvider
-{
+private struct UnavailableBootSessionIdentifierProvider: WidgetBootSessionProvider {
     func identifier() -> String? {
         nil
     }

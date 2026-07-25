@@ -84,7 +84,7 @@ class TunnelsManager {
             RecentTunnelsTracker.cleanupTunnels(except: tunnelNames)
             #endif
             let retainedMigratedManagers = migratedTunnelManagers.filter { migratedManager in
-                tunnelManagers.contains(where: { $0 === migratedManager })
+                tunnelManagers.contains { $0 === migratedManager }
             }
             saveMigratedTunnelManagers(retainedMigratedManagers) { failures in
                 logMigrationSaveFailures(failures, context: "during create")
@@ -144,12 +144,11 @@ class TunnelsManager {
                     let loadedTunnelProviders = managers ?? []
                     var migratedTunnelProviders: [NETunnelProviderManager] = []
 
-                    for (index, currentTunnel) in self.tunnels.enumerated().reversed() {
-                        if !loadedTunnelProviders.contains(where: { $0.isEquivalentTo(currentTunnel) }) {
-                            // Tunnel was deleted outside the app
-                            self.tunnels.remove(at: index)
-                            self.tunnelsListDelegate?.tunnelRemoved(at: index, tunnel: currentTunnel)
-                        }
+                    for (index, currentTunnel) in self.tunnels.enumerated().reversed()
+                        where !loadedTunnelProviders.contains(where: { $0.isEquivalentTo(currentTunnel) }) {
+                        // Tunnel was deleted outside the app
+                        self.tunnels.remove(at: index)
+                        self.tunnelsListDelegate?.tunnelRemoved(at: index, tunnel: currentTunnel)
                     }
                     for loadedTunnelProvider in loadedTunnelProviders {
                         let migrated =
