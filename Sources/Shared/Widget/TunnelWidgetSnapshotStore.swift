@@ -5,7 +5,7 @@ import Darwin
 import Foundation
 
 protocol TunnelWidgetTransitionClock {
-    func now() -> TunnelWidgetTransitionOrder
+    func now() -> TunnelWidgetTransitionOrder?
 }
 
 protocol TunnelWidgetBootSessionIdentifierProvider {
@@ -47,27 +47,22 @@ struct TunnelWidgetDarwinBootSessionIdentifierProvider:
 }
 
 struct TunnelWidgetSystemTransitionClock: TunnelWidgetTransitionClock {
-    private static let fallbackBootSessionIdentifier = "unavailable-boot-session"
-
-    private let bootSessionIdentifier: String
+    private let bootSessionIdentifier: String?
 
     init(
         bootSessionIdentifierProvider: TunnelWidgetBootSessionIdentifierProvider =
             TunnelWidgetDarwinBootSessionIdentifierProvider()
     ) {
-        if let identifier = bootSessionIdentifierProvider.identifier() {
-            bootSessionIdentifier = identifier
-        } else {
-            assertionFailure("kern.bootsessionuuid is unavailable")
-            bootSessionIdentifier = Self.fallbackBootSessionIdentifier
-        }
+        bootSessionIdentifier = bootSessionIdentifierProvider.identifier()
     }
 
-    func now() -> TunnelWidgetTransitionOrder {
-        TunnelWidgetTransitionOrder(
-            bootSessionIdentifier: bootSessionIdentifier,
-            monotonicTimestamp: ProcessInfo.processInfo.systemUptime
-        )
+    func now() -> TunnelWidgetTransitionOrder? {
+        bootSessionIdentifier.map {
+            TunnelWidgetTransitionOrder(
+                bootSessionIdentifier: $0,
+                monotonicTimestamp: ProcessInfo.processInfo.systemUptime
+            )
+        }
     }
 }
 

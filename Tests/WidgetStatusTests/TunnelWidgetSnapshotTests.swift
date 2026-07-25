@@ -4,6 +4,8 @@ import Foundation
 private enum TunnelWidgetSnapshotTests {
     static func main() {
         testProductionBootSessionIdentifier()
+        testUnavailableBootSessionIdentity()
+        testUnavailableOrderingAcceptsNewBootContent()
 
         let temporaryDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("TunnelWidgetSnapshotTests.\(UUID().uuidString)", isDirectory: true)
@@ -110,6 +112,109 @@ private enum TunnelWidgetSnapshotTests {
         )
     }
 
+    private static func testUnavailableBootSessionIdentity() {
+        let clock = TunnelWidgetSystemTransitionClock(
+            bootSessionIdentifierProvider: UnavailableBootSessionIdentifierProvider()
+        )
+
+        expect(clock.now() == nil, "An unavailable boot identity produces no transition order")
+    }
+
+    private static func testUnavailableOrderingAcceptsNewBootContent() {
+        let temporaryDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(
+                "TunnelWidgetUnavailableOrderingTests.\(UUID().uuidString)",
+                isDirectory: true
+            )
+        let snapshotURL = temporaryDirectory.appendingPathComponent("snapshot.json")
+        try? FileManager.default.createDirectory(
+            at: temporaryDirectory,
+            withIntermediateDirectories: true
+        )
+        defer {
+            try? FileManager.default.removeItem(at: temporaryDirectory)
+        }
+
+        let backend = TunnelWidgetSnapshotFileBackend(fileURL: snapshotURL)
+        let oldBootDate = Date(timeIntervalSince1970: 1_721_868_800)
+        let newBootDate = Date(timeIntervalSince1970: 1_721_868_860)
+        let reliableDate = Date(timeIntervalSince1970: 1_721_868_920)
+        expect(
+            backend.save(
+                TunnelWidgetSnapshot(
+                    status: .connected,
+                    tunnelName: "Home",
+                    updatedAt: oldBootDate,
+                    transitionOrder: TunnelWidgetTransitionOrder(
+                        bootSessionIdentifier: "old-boot",
+                        monotonicTimestamp: 100_000
+                    )
+                )
+            ) == .contentChanged,
+            "The old boot watermark is persisted"
+        )
+
+        let unavailableStore = TunnelWidgetSnapshotStore(
+            backend: backend,
+            transitionClock: TunnelWidgetSystemTransitionClock(
+                bootSessionIdentifierProvider: UnavailableBootSessionIdentifierProvider()
+            )
+        )
+        expect(
+            unavailableStore.saveIfChanged(
+                status: .disconnecting,
+                tunnelName: "Home",
+                now: newBootDate
+            ),
+            "Unavailable ordering does not reject different new-boot content"
+        )
+        expect(backend.load()?.status == .disconnecting, "New-boot content replaces the old snapshot")
+        expect(backend.load()?.transitionOrder == nil, "Unavailable ordering is persisted as unavailable")
+        expect(
+            !unavailableStore.saveIfChanged(
+                status: .disconnecting,
+                tunnelName: "Home",
+                now: newBootDate.addingTimeInterval(30)
+            ),
+            "Equivalent content suppresses reload when ordering is unavailable"
+        )
+        expect(
+            backend.load()?.updatedAt == newBootDate,
+            "Equivalent unavailable-order content preserves the content-change timestamp"
+        )
+
+        let reliableClock = TestTransitionClock(
+            transition: TunnelWidgetTransitionOrder(
+                bootSessionIdentifier: "new-boot",
+                monotonicTimestamp: 2
+            )
+        )
+        let reliableStore = TunnelWidgetSnapshotStore(
+            backend: backend,
+            transitionClock: reliableClock
+        )
+        expect(
+            reliableStore.saveIfChanged(
+                status: .disconnected,
+                tunnelName: nil,
+                now: reliableDate
+            ),
+            "Reliable ordering resumes after an unavailable transition"
+        )
+        reliableClock.transition = TunnelWidgetTransitionOrder(
+            bootSessionIdentifier: "new-boot",
+            monotonicTimestamp: 1
+        )
+        expect(
+            !reliableStore.saveIfChanged(
+                status: .connected,
+                tunnelName: "Home",
+                now: reliableDate.addingTimeInterval(60)
+            ),
+            "Resumed reliable ordering rejects a stale transition"
+        )
+    }
+
     private static func expect(
         _ condition: @autoclosure () -> Bool,
         _ message: String,
@@ -124,13 +229,21 @@ private enum TunnelWidgetSnapshotTests {
 }
 
 private final class TestTransitionClock: TunnelWidgetTransitionClock {
-    var transition: TunnelWidgetTransitionOrder
+    var transition: TunnelWidgetTransitionOrder?
 
-    init(transition: TunnelWidgetTransitionOrder) {
+    init(transition: TunnelWidgetTransitionOrder?) {
         self.transition = transition
     }
 
-    func now() -> TunnelWidgetTransitionOrder {
+    func now() -> TunnelWidgetTransitionOrder? {
         transition
+    }
+}
+
+private struct UnavailableBootSessionIdentifierProvider:
+    TunnelWidgetBootSessionIdentifierProvider
+{
+    func identifier() -> String? {
+        nil
     }
 }
