@@ -205,9 +205,28 @@
 		6FFA5DA021958ECC0001E2F7 /* ErrorNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FFA5D9F21958ECC0001E2F7 /* ErrorNotifier.swift */; };
 		6FFA5DA42197085D0001E2F7 /* ActivateOnDemandOption.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FFA5DA32197085D0001E2F7 /* ActivateOnDemandOption.swift */; };
 		6FFACD2021E4D8D500E9A2A5 /* ParseError+WireGuardAppError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FFACD1E21E4D89600E9A2A5 /* ParseError+WireGuardAppError.swift */; };
+		7A3000100000000000000000 /* WireGuardStatusWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 7A3000010000000000000000 /* WireGuardStatusWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		7A3000110000000000000000 /* WireGuardStatusWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A3000040000000000000000 /* WireGuardStatusWidget.swift */; };
+		7A3000120000000000000000 /* WireGuardStatusWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A3000050000000000000000 /* WireGuardStatusWidgetView.swift */; };
+		7A3000130000000000000000 /* TunnelWidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A3000060000000000000000 /* TunnelWidgetSnapshot.swift */; };
+		7A3000140000000000000000 /* TunnelWidgetSnapshotStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A3000070000000000000000 /* TunnelWidgetSnapshotStore.swift */; };
+		7A3000150000000000000000 /* TunnelWidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A3000060000000000000000 /* TunnelWidgetSnapshot.swift */; };
+		7A3000160000000000000000 /* TunnelWidgetSnapshotStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A3000070000000000000000 /* TunnelWidgetSnapshotStore.swift */; };
+		7A3000170000000000000000 /* TunnelWidgetStatusPublisher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A3000080000000000000000 /* TunnelWidgetStatusPublisher.swift */; };
+		7A3000180000000000000000 /* TunnelConfigurationMigration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A3000090000000000000000 /* TunnelConfigurationMigration.swift */; };
+		7A3000190000000000000000 /* TunnelWidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A3000060000000000000000 /* TunnelWidgetSnapshot.swift */; };
+		7A30001A0000000000000000 /* TunnelWidgetSnapshotStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A3000070000000000000000 /* TunnelWidgetSnapshotStore.swift */; };
+		7A30001B0000000000000000 /* TunnelWidgetStatusPublisher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A3000080000000000000000 /* TunnelWidgetStatusPublisher.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		7A3000200000000000000000 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 6FF4AC0C211EC46F002C96EB /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7A3000400000000000000000;
+			remoteInfo = WireGuardStatusWidget;
+		};
 		6F5D0C20218352EF000F85AD /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 6FF4AC0C211EC46F002C96EB /* Project object */;
@@ -253,6 +272,7 @@
 			dstSubfolderSpec = 13;
 			files = (
 				6F5D0C22218352EF000F85AD /* WireGuardNetworkExtension.appex in Embed App Extensions */,
+				7A3000100000000000000000 /* WireGuardStatusWidget.appex in Embed App Extensions */,
 			);
 			name = "Embed App Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -440,6 +460,15 @@
 		6FFA5D9F21958ECC0001E2F7 /* ErrorNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorNotifier.swift; sourceTree = "<group>"; };
 		6FFA5DA32197085D0001E2F7 /* ActivateOnDemandOption.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivateOnDemandOption.swift; sourceTree = "<group>"; };
 		6FFACD1E21E4D89600E9A2A5 /* ParseError+WireGuardAppError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ParseError+WireGuardAppError.swift"; sourceTree = "<group>"; };
+		7A3000010000000000000000 /* WireGuardStatusWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = WireGuardStatusWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		7A3000020000000000000000 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		7A3000030000000000000000 /* WireGuardStatusWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WireGuardStatusWidget.entitlements; sourceTree = "<group>"; };
+		7A3000040000000000000000 /* WireGuardStatusWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WireGuardStatusWidget.swift; sourceTree = "<group>"; };
+		7A3000050000000000000000 /* WireGuardStatusWidgetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WireGuardStatusWidgetView.swift; sourceTree = "<group>"; };
+		7A3000060000000000000000 /* TunnelWidgetSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TunnelWidgetSnapshot.swift; sourceTree = "<group>"; };
+		7A3000070000000000000000 /* TunnelWidgetSnapshotStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TunnelWidgetSnapshotStore.swift; sourceTree = "<group>"; };
+		7A3000080000000000000000 /* TunnelWidgetStatusPublisher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TunnelWidgetStatusPublisher.swift; sourceTree = "<group>"; };
+		7A3000090000000000000000 /* TunnelConfigurationMigration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TunnelConfigurationMigration.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -474,6 +503,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				6B653B86220DE2960050E69C /* NetworkExtension.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7A3000310000000000000000 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -583,6 +619,7 @@
 			children = (
 				6FF3526A21C23F720008484E /* Logging */,
 				6F7774E6217201E0006A79B3 /* Model */,
+				7A30000B0000000000000000 /* Widget */,
 				6F5A2B4421AFDE020081EDD8 /* FileManager+Extension.swift */,
 				6B5C5E26220A48D30024272E /* Keychain.swift */,
 				58233BCE2591F842002060A8 /* NotificationToken.swift */,
@@ -639,6 +676,7 @@
 			isa = PBXGroup;
 			children = (
 				5F9696AF21CD7128008063FE /* TunnelConfiguration+WgQuickConfig.swift */,
+				7A3000090000000000000000 /* TunnelConfigurationMigration.swift */,
 				6FFA5D942194454A0001E2F7 /* NETunnelProviderProtocol+Extension.swift */,
 				5F4541B121CBFAEE00994C13 /* String+ArrayConversion.swift */,
 			);
@@ -767,6 +805,7 @@
 				6F5D0C432183B4A4000F85AD /* Shared */,
 				6FF4AC16211EC46F002C96EB /* WireGuardApp */,
 				6F5D0C1B218352EF000F85AD /* WireGuardNetworkExtension */,
+				7A30000A0000000000000000 /* WireGuardStatusWidget */,
 				585B10452577E293004F691E /* WireGuardKit */,
 				585B10532577E293004F691E /* WireGuardKitC */,
 				6FF4AC15211EC46F002C96EB /* Products */,
@@ -779,6 +818,7 @@
 			children = (
 				6FF4AC14211EC46F002C96EB /* WireGuard.app */,
 				6F5D0C1A218352EF000F85AD /* WireGuardNetworkExtension.appex */,
+				7A3000010000000000000000 /* WireGuardStatusWidget.appex */,
 				6FB1BD5D21D2607A00A991BF /* WireGuard.app */,
 				6FB1BD9121D4BFE600A991BF /* WireGuardNetworkExtension.appex */,
 				6F70E22922106A2D008BDFB4 /* WireGuardLoginItemHelper.app */,
@@ -811,6 +851,27 @@
 				6FF4AC462120B9E0002C96EB /* NetworkExtension.framework */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		7A30000A0000000000000000 /* WireGuardStatusWidget */ = {
+			isa = PBXGroup;
+			children = (
+				7A3000020000000000000000 /* Info.plist */,
+				7A3000030000000000000000 /* WireGuardStatusWidget.entitlements */,
+				7A3000040000000000000000 /* WireGuardStatusWidget.swift */,
+				7A3000050000000000000000 /* WireGuardStatusWidgetView.swift */,
+			);
+			path = Sources/WireGuardStatusWidget;
+			sourceTree = "<group>";
+		};
+		7A30000B0000000000000000 /* Widget */ = {
+			isa = PBXGroup;
+			children = (
+				7A3000060000000000000000 /* TunnelWidgetSnapshot.swift */,
+				7A3000070000000000000000 /* TunnelWidgetSnapshotStore.swift */,
+				7A3000080000000000000000 /* TunnelWidgetStatusPublisher.swift */,
+			);
+			path = Widget;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -946,6 +1007,7 @@
 			);
 			dependencies = (
 				6F5D0C21218352EF000F85AD /* PBXTargetDependency */,
+				7A3000210000000000000000 /* PBXTargetDependency */,
 			);
 			name = WireGuardiOS;
 			packageProductDependencies = (
@@ -953,6 +1015,25 @@
 			productName = WireGuard;
 			productReference = 6FF4AC14211EC46F002C96EB /* WireGuard.app */;
 			productType = "com.apple.product-type.application";
+		};
+		7A3000400000000000000000 /* WireGuardStatusWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7A3000520000000000000000 /* Build configuration list for PBXNativeTarget "WireGuardStatusWidget" */;
+			buildPhases = (
+				7A3000300000000000000000 /* Sources */,
+				7A3000310000000000000000 /* Frameworks */,
+				7A3000320000000000000000 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = WireGuardStatusWidget;
+			packageProductDependencies = (
+			);
+			productName = WireGuardStatusWidget;
+			productReference = 7A3000010000000000000000 /* WireGuardStatusWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -964,6 +1045,14 @@
 				LastUpgradeCheck = 1010;
 				ORGANIZATIONNAME = "WireGuard LLC";
 				TargetAttributes = {
+					7A3000400000000000000000 = {
+						CreatedOnToolsVersion = 15.0;
+						SystemCapabilities = {
+							com.apple.ApplicationGroups.iOS = {
+								enabled = 1;
+							};
+						};
+					};
 					6F5D0C19218352EF000F85AD = {
 						CreatedOnToolsVersion = 10.0;
 						LastSwiftMigration = 1020;
@@ -1055,6 +1144,7 @@
 			targets = (
 				6FF4AC13211EC46F002C96EB /* WireGuardiOS */,
 				6F5D0C19218352EF000F85AD /* WireGuardNetworkExtensioniOS */,
+				7A3000400000000000000000 /* WireGuardStatusWidget */,
 				6FDEF7DD21846BC100D8FBF6 /* WireGuardGoBridgeiOS */,
 				6FB1BD5C21D2607A00A991BF /* WireGuardmacOS */,
 				6FB1BD9021D4BFE600A991BF /* WireGuardNetworkExtensionmacOS */,
@@ -1100,6 +1190,13 @@
 				6FF4AC1F211EC472002C96EB /* Assets.xcassets in Resources */,
 				6F919EDB218C65C50023B400 /* wireguard_doc_logo_64x64.png in Resources */,
 				6F919EDC218C65C50023B400 /* wireguard_doc_logo_320x320.png in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7A3000320000000000000000 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1257,6 +1354,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7A3000190000000000000000 /* TunnelWidgetSnapshot.swift in Sources */,
+				7A30001A0000000000000000 /* TunnelWidgetSnapshotStore.swift in Sources */,
+				7A30001B0000000000000000 /* TunnelWidgetStatusPublisher.swift in Sources */,
 				6FF3527021C240160008484E /* ringlogger.c in Sources */,
 				585B106F2577E294004F691E /* WireGuardAdapter.swift in Sources */,
 				6FF3527121C240160008484E /* Logger.swift in Sources */,
@@ -1401,6 +1501,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7A3000150000000000000000 /* TunnelWidgetSnapshot.swift in Sources */,
+				7A3000160000000000000000 /* TunnelWidgetSnapshotStore.swift in Sources */,
+				7A3000170000000000000000 /* TunnelWidgetStatusPublisher.swift in Sources */,
+				7A3000180000000000000000 /* TunnelConfigurationMigration.swift in Sources */,
 				6FE1765A21C90E87002690EA /* LocalizationHelper.swift in Sources */,
 				6F29A94722787B1600DC6A6B /* QuickActionItem.swift in Sources */,
 				585B105A2577E293004F691E /* InterfaceConfiguration.swift in Sources */,
@@ -1467,6 +1571,17 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		7A3000300000000000000000 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7A3000110000000000000000 /* WireGuardStatusWidget.swift in Sources */,
+				7A3000120000000000000000 /* WireGuardStatusWidgetView.swift in Sources */,
+				7A3000130000000000000000 /* TunnelWidgetSnapshot.swift in Sources */,
+				7A3000140000000000000000 /* TunnelWidgetSnapshotStore.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -1494,6 +1609,11 @@
 			isa = PBXTargetDependency;
 			target = 6FDEF7DD21846BC100D8FBF6 /* WireGuardGoBridgeiOS */;
 			targetProxy = 6FDEF7E121846C0000D8FBF6 /* PBXContainerItemProxy */;
+		};
+		7A3000210000000000000000 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7A3000400000000000000000 /* WireGuardStatusWidget */;
+			targetProxy = 7A3000200000000000000000 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -1899,6 +2019,50 @@
 			};
 			name = Release;
 		};
+		7A3000500000000000000000 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = Sources/WireGuardStatusWidget/WireGuardStatusWidget.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Sources/WireGuardStatusWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_ID_IOS).widget";
+				PRODUCT_NAME = WireGuardStatusWidget;
+				SKIP_INSTALL = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		7A3000510000000000000000 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = Sources/WireGuardStatusWidget/WireGuardStatusWidget.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Sources/WireGuardStatusWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_ID_IOS).widget";
+				PRODUCT_NAME = WireGuardStatusWidget;
+				SKIP_INSTALL = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1970,6 +2134,15 @@
 			buildConfigurations = (
 				6FF4AC27211EC472002C96EB /* Debug */,
 				6FF4AC28211EC472002C96EB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7A3000520000000000000000 /* Build configuration list for PBXNativeTarget "WireGuardStatusWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7A3000500000000000000000 /* Debug */,
+				7A3000510000000000000000 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
