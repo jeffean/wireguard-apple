@@ -23,22 +23,34 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
 
         guard let tunnelProviderProtocol = self.protocolConfiguration as? NETunnelProviderProtocol,
               let tunnelConfiguration = tunnelProviderProtocol.asTunnelConfiguration() else {
+            #if os(iOS)
+            TunnelWidgetStatusPublisher.publish(status: .disconnected, tunnelName: nil)
+            #endif
             errorNotifier.notify(PacketTunnelProviderError.savedProtocolConfigurationIsInvalid)
             completionHandler(PacketTunnelProviderError.savedProtocolConfigurationIsInvalid)
             return
         }
 
         // Start the tunnel
+        #if os(iOS)
+        TunnelWidgetStatusPublisher.publish(status: .connecting, tunnelName: tunnelProviderProtocol.tunnelName)
+        #endif
         adapter.start(tunnelConfiguration: tunnelConfiguration) { adapterError in
             guard let adapterError = adapterError else {
                 let interfaceName = self.adapter.interfaceName ?? "unknown"
 
                 wg_log(.info, message: "Tunnel interface is \(interfaceName)")
 
+                #if os(iOS)
+                TunnelWidgetStatusPublisher.publish(status: .connected, tunnelName: tunnelProviderProtocol.tunnelName)
+                #endif
                 completionHandler(nil)
                 return
             }
 
+            #if os(iOS)
+            TunnelWidgetStatusPublisher.publish(status: .disconnected, tunnelName: nil)
+            #endif
             switch adapterError {
             case .cannotLocateTunnelFileDescriptor:
                 wg_log(.error, staticMessage: "Starting tunnel failed: could not determine file descriptor")
@@ -72,12 +84,19 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     override func stopTunnel(with reason: NEProviderStopReason, completionHandler: @escaping () -> Void) {
         wg_log(.info, staticMessage: "Stopping tunnel")
 
+        #if os(iOS)
+        let tunnelName = (protocolConfiguration as? NETunnelProviderProtocol)?.tunnelName
+        TunnelWidgetStatusPublisher.publish(status: .disconnecting, tunnelName: tunnelName)
+        #endif
         adapter.stop { error in
             ErrorNotifier.removeLastErrorFile()
 
             if let error = error {
                 wg_log(.error, message: "Failed to stop WireGuard adapter: \(error.localizedDescription)")
             }
+            #if os(iOS)
+            TunnelWidgetStatusPublisher.publish(status: .disconnected, tunnelName: nil)
+            #endif
             completionHandler()
 
             #if os(macOS)

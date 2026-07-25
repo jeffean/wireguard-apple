@@ -31,6 +31,9 @@ class TunnelsManager {
         tunnels = tunnelProviders.map { TunnelContainer(tunnel: $0) }.sorted { TunnelsManager.tunnelNameIsLessThan($0.name, $1.name) }
         startObservingTunnelStatuses()
         startObservingTunnelConfigurations()
+        #if os(iOS)
+        publishTunnelWidgetStatus()
+        #endif
     }
 
     static func create(completionHandler: @escaping (Result<TunnelsManager, TunnelsManagerError>) -> Void) {
@@ -498,8 +501,14 @@ class TunnelsManager {
 
     private func startObservingTunnelStatuses() {
         statusObservationToken = NotificationCenter.default.observe(name: .NEVPNStatusDidChange, object: nil, queue: OperationQueue.main) { [weak self] statusChangeNotification in
-            guard let self = self,
-                let session = statusChangeNotification.object as? NETunnelProviderSession,
+            guard let self = self else { return }
+            #if os(iOS)
+            defer {
+                self.publishTunnelWidgetStatus()
+            }
+            #endif
+
+            guard let session = statusChangeNotification.object as? NETunnelProviderSession,
                 let tunnelProvider = session.manager as? NETunnelProviderManager,
                 let tunnel = self.tunnels.first(where: { $0.tunnelProvider == tunnelProvider }) else { return }
 
@@ -532,6 +541,36 @@ class TunnelsManager {
             tunnel.refreshStatus()
         }
     }
+
+    #if os(iOS)
+    private func publishTunnelWidgetStatus() {
+        let candidates = tunnels.map { tunnel in
+            let state: TunnelWidgetStatusCandidate.State
+            switch tunnel.status {
+            case .inactive:
+                state = .inactive
+            case .activating:
+                state = .activating
+            case .active:
+                state = .active
+            case .deactivating:
+                state = .deactivating
+            case .reasserting:
+                state = .reasserting
+            case .restarting:
+                state = .restarting
+            case .waiting:
+                state = .waiting
+            }
+            return TunnelWidgetStatusCandidate(state: state, tunnelName: tunnel.name)
+        }
+        let resolvedStatus = TunnelWidgetStatusResolver.resolve(candidates)
+        TunnelWidgetStatusPublisher.publish(
+            status: resolvedStatus.status,
+            tunnelName: resolvedStatus.tunnelName
+        )
+    }
+    #endif
 
     func startObservingTunnelConfigurations() {
         configurationsObservationToken = NotificationCenter.default.observe(name: .NEVPNConfigurationChange, object: nil, queue: OperationQueue.main) { [weak self] _ in
