@@ -123,3 +123,17 @@ enum TunnelReloadBatchCoordinator {
         }
     }
 }
+
+enum TunnelReloadResultGate {
+    static func continueIfSuccessful(
+        error: Error?,
+        failure: (Error) -> Void,
+        success: () -> Void
+    ) {
+        if let error {
+            failure(error)
+            return
+        }
+        success()
+    }
+}

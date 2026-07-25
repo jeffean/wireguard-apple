@@ -129,45 +129,56 @@ class TunnelsManager {
     }
 
     func reload() {
-        NETunnelProviderManager.loadAllFromPreferences { [weak self] managers, _ in
+        NETunnelProviderManager.loadAllFromPreferences { [weak self] managers, error in
             guard let self = self else { return }
 
-            let loadedTunnelProviders = managers ?? []
-            var migratedTunnelProviders: [NETunnelProviderManager] = []
-
-            for (index, currentTunnel) in self.tunnels.enumerated().reversed() {
-                if !loadedTunnelProviders.contains(where: { $0.isEquivalentTo(currentTunnel) }) {
-                    // Tunnel was deleted outside the app
-                    self.tunnels.remove(at: index)
-                    self.tunnelsListDelegate?.tunnelRemoved(at: index, tunnel: currentTunnel)
-                }
-            }
-            for loadedTunnelProvider in loadedTunnelProviders {
-                let migrated =
-                    (loadedTunnelProvider.protocolConfiguration as? NETunnelProviderProtocol)?
-                    .migrateConfigurationIfNeeded(
-                        called: loadedTunnelProvider.localizedDescription ?? "unknown"
-                    ) ?? false
-                if migrated {
-                    migratedTunnelProviders.append(loadedTunnelProvider)
-                }
-            }
-
-            TunnelReloadBatchCoordinator.finish(
-                migrationOperations: TunnelsManager.migrationSaveOperations(
-                    for: migratedTunnelProviders
-                ),
-                maxAttempts: 2,
-                migrationCompletion: { failures in
-                    TunnelsManager.logMigrationSaveFailures(failures, context: "during reload")
+            TunnelReloadResultGate.continueIfSuccessful(
+                error: error,
+                failure: { error in
+                    wg_log(
+                        .error,
+                        message: "Failed to reload tunnel provider managers: \(error)"
+                    )
                 },
-                integrate: {
-                    loadedTunnelProviders.forEach(self.integrateReloadedTunnelProvider)
-                },
-                publish: {
-                    #if os(iOS)
-                    self.publishTunnelWidgetStatus()
-                    #endif
+                success: {
+                    let loadedTunnelProviders = managers ?? []
+                    var migratedTunnelProviders: [NETunnelProviderManager] = []
+
+                    for (index, currentTunnel) in self.tunnels.enumerated().reversed() {
+                        if !loadedTunnelProviders.contains(where: { $0.isEquivalentTo(currentTunnel) }) {
+                            // Tunnel was deleted outside the app
+                            self.tunnels.remove(at: index)
+                            self.tunnelsListDelegate?.tunnelRemoved(at: index, tunnel: currentTunnel)
+                        }
+                    }
+                    for loadedTunnelProvider in loadedTunnelProviders {
+                        let migrated =
+                            (loadedTunnelProvider.protocolConfiguration as? NETunnelProviderProtocol)?
+                            .migrateConfigurationIfNeeded(
+                                called: loadedTunnelProvider.localizedDescription ?? "unknown"
+                            ) ?? false
+                        if migrated {
+                            migratedTunnelProviders.append(loadedTunnelProvider)
+                        }
+                    }
+
+                    TunnelReloadBatchCoordinator.finish(
+                        migrationOperations: TunnelsManager.migrationSaveOperations(
+                            for: migratedTunnelProviders
+                        ),
+                        maxAttempts: 2,
+                        migrationCompletion: { failures in
+                            TunnelsManager.logMigrationSaveFailures(failures, context: "during reload")
+                        },
+                        integrate: {
+                            loadedTunnelProviders.forEach(self.integrateReloadedTunnelProvider)
+                        },
+                        publish: {
+                            #if os(iOS)
+                            self.publishTunnelWidgetStatus()
+                            #endif
+                        }
+                    )
                 }
             )
         }

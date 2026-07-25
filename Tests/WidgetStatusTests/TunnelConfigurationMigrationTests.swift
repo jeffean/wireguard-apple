@@ -12,6 +12,8 @@ private enum TunnelConfigurationMigrationTests {
         testMigrationSaveReturnsExhaustedFailures()
         testAvailabilityWaitsForExhaustedAttempts()
         testReloadBatchPublishesOnceAfterAllAsyncWorkAndIntegration()
+        testReloadLoadFailureStopsBeforeBatchAndPublish()
+        testReloadSuccessfulEmptyLoadContinues()
         print("PASS: TunnelConfigurationMigrationTests")
     }
 
@@ -168,6 +170,49 @@ private enum TunnelConfigurationMigrationTests {
             "All providers are integrated after migration saves finish"
         )
         expect(publishCount == 1, "Aggregate status publishes exactly once for the completed reload batch")
+    }
+
+    private static func testReloadLoadFailureStopsBeforeBatchAndPublish() {
+        let expectedError = NSError(domain: "MigrationTests", code: 9)
+        var receivedError: Error?
+        var batchCount = 0
+        var publishCount = 0
+
+        TunnelReloadResultGate.continueIfSuccessful(
+            error: expectedError,
+            failure: { error in
+                receivedError = error
+            },
+            success: {
+                batchCount += 1
+                publishCount += 1
+            }
+        )
+
+        expect(
+            (receivedError as NSError?) == expectedError,
+            "Reload failure preserves the complete underlying error for logging"
+        )
+        expect(batchCount == 0, "Reload failure does not start migration or integration work")
+        expect(publishCount == 0, "Reload failure does not publish a disconnected snapshot")
+    }
+
+    private static func testReloadSuccessfulEmptyLoadContinues() {
+        var failureCount = 0
+        var batchCount = 0
+
+        TunnelReloadResultGate.continueIfSuccessful(
+            error: nil,
+            failure: { _ in
+                failureCount += 1
+            },
+            success: {
+                batchCount += 1
+            }
+        )
+
+        expect(failureCount == 0, "Successful empty reload does not enter the failure path")
+        expect(batchCount == 1, "Successful empty reload continues into normal reconciliation")
     }
 
     private static func expect(
