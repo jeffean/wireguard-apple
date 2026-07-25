@@ -45,6 +45,13 @@ private enum TunnelWidgetStatusResolverTests {
             ],
             equals: TunnelWidgetResolvedStatus(status: .connected, tunnelName: "Home")
         )
+        assertResolution(
+            [
+                TunnelWidgetStatusCandidate(state: .waiting, tunnelName: "Office"),
+                TunnelWidgetStatusCandidate(state: .deactivating, tunnelName: "Home"),
+            ],
+            equals: TunnelWidgetResolvedStatus(status: .disconnecting, tunnelName: "Home")
+        )
 
         print("PASS: TunnelWidgetStatusResolverTests")
     }

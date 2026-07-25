@@ -33,6 +33,10 @@ enum TunnelWidgetStatusResolver {
             return TunnelWidgetResolvedStatus(status: .connected, tunnelName: active.tunnelName)
         }
 
+        if let deactivating = candidates.first(where: { $0.state == .deactivating }) {
+            return TunnelWidgetResolvedStatus(status: .disconnecting, tunnelName: deactivating.tunnelName)
+        }
+
         if let connecting = candidates.first(where: {
             switch $0.state {
             case .activating, .reasserting, .restarting, .waiting:
@@ -44,10 +48,6 @@ enum TunnelWidgetStatusResolver {
             return TunnelWidgetResolvedStatus(status: .connecting, tunnelName: connecting.tunnelName)
         }
 
-        if let deactivating = candidates.first(where: { $0.state == .deactivating }) {
-            return TunnelWidgetResolvedStatus(status: .disconnecting, tunnelName: deactivating.tunnelName)
-        }
-
         return TunnelWidgetResolvedStatus(status: .disconnected, tunnelName: nil)
     }
 }
@@ -57,8 +57,13 @@ enum TunnelWidgetStatusResolver {
         static let widgetKind = "TunnelStatusWidget"
 
         static func publish(status: TunnelWidgetStatus, tunnelName: String?) {
+            let invocationDate = Date()
             let store = TunnelWidgetSnapshotStore()
-            guard store.saveIfChanged(status: status, tunnelName: tunnelName) else {
+            guard store.saveIfChanged(
+                status: status,
+                tunnelName: tunnelName,
+                now: invocationDate
+            ) else {
                 return
             }
             WidgetCenter.shared.reloadTimelines(ofKind: widgetKind)

@@ -50,13 +50,14 @@ class TunnelsManager {
             var tunnelManagers = managers ?? []
             var refs: Set<Data> = []
             var tunnelNames: Set<String> = []
+            var migratedTunnelManagers: [NETunnelProviderManager] = []
             for (index, tunnelManager) in tunnelManagers.enumerated().reversed() {
                 if let tunnelName = tunnelManager.localizedDescription {
                     tunnelNames.insert(tunnelName)
                 }
                 guard let proto = tunnelManager.protocolConfiguration as? NETunnelProviderProtocol else { continue }
                 if proto.migrateConfigurationIfNeeded(called: tunnelManager.localizedDescription ?? "unknown") {
-                    tunnelManager.saveToPreferences { _ in }
+                    migratedTunnelManagers.append(tunnelManager)
                 }
                 #if os(iOS)
                 let passwordRef = proto.verifyConfigurationReference() ? proto.passwordReference : nil
@@ -82,9 +83,43 @@ class TunnelsManager {
             #if os(iOS)
             RecentTunnelsTracker.cleanupTunnels(except: tunnelNames)
             #endif
-            completionHandler(.success(TunnelsManager(tunnelProviders: tunnelManagers)))
+            let retainedMigratedManagers = migratedTunnelManagers.filter { migratedManager in
+                tunnelManagers.contains(where: { $0 === migratedManager })
+            }
+            saveMigratedTunnelManagers(retainedMigratedManagers) { result in
+                switch result {
+                case .success:
+                    completionHandler(.success(TunnelsManager(tunnelProviders: tunnelManagers)))
+                case .failure(let failure):
+                    wg_log(
+                        .error,
+                        message: "Failed to save migrated tunnel '\(failure.tunnelName)': \(failure.underlyingError)"
+                    )
+                    completionHandler(
+                        .failure(
+                            TunnelsManagerError.systemErrorOnMigration(
+                                tunnelName: failure.tunnelName,
+                                systemError: failure.underlyingError
+                            )
+                        )
+                    )
+                }
+            }
         }
         #endif
+    }
+
+    private static func saveMigratedTunnelManagers(
+        _ tunnelManagers: [NETunnelProviderManager],
+        completion: @escaping (Result<Void, TunnelMigrationSaveFailure>) -> Void
+    ) {
+        let operations = tunnelManagers.map { tunnelManager in
+            let tunnelName = tunnelManager.localizedDescription ?? "unknown"
+            return TunnelMigrationSaveOperation(name: tunnelName) { saveCompletion in
+                tunnelManager.saveToPreferences(completionHandler: saveCompletion)
+            }
+        }
+        TunnelMigrationSaveCoordinator.saveAll(operations, completion: completion)
     }
 
     func reload() {
@@ -101,23 +136,37 @@ class TunnelsManager {
                 }
             }
             for loadedTunnelProvider in loadedTunnelProviders {
-                if let matchingTunnel = self.tunnels.first(where: { loadedTunnelProvider.isEquivalentTo($0) }) {
-                    matchingTunnel.tunnelProvider = loadedTunnelProvider
-                    matchingTunnel.refreshStatus()
-                } else {
-                    // Tunnel was added outside the app
-                    if let proto = loadedTunnelProvider.protocolConfiguration as? NETunnelProviderProtocol {
-                        if proto.migrateConfigurationIfNeeded(called: loadedTunnelProvider.localizedDescription ?? "unknown") {
-                            loadedTunnelProvider.saveToPreferences { _ in }
+                if let proto = loadedTunnelProvider.protocolConfiguration as? NETunnelProviderProtocol,
+                   proto.migrateConfigurationIfNeeded(called: loadedTunnelProvider.localizedDescription ?? "unknown") {
+                    loadedTunnelProvider.saveToPreferences { [weak self] error in
+                        if let error = error {
+                            wg_log(
+                                .error,
+                                message: "Failed to save migrated tunnel '\(loadedTunnelProvider.localizedDescription ?? "unknown")' during reload: \(error)"
+                            )
+                            return
                         }
+                        self?.integrateReloadedTunnelProvider(loadedTunnelProvider)
                     }
-                    let tunnel = TunnelContainer(tunnel: loadedTunnelProvider)
-                    self.tunnels.append(tunnel)
-                    self.tunnels.sort { TunnelsManager.tunnelNameIsLessThan($0.name, $1.name) }
-                    self.tunnelsListDelegate?.tunnelAdded(at: self.tunnels.firstIndex(of: tunnel)!)
+                    continue
                 }
+                self.integrateReloadedTunnelProvider(loadedTunnelProvider)
             }
         }
+    }
+
+    private func integrateReloadedTunnelProvider(_ tunnelProvider: NETunnelProviderManager) {
+        if let matchingTunnel = tunnels.first(where: { tunnelProvider.isEquivalentTo($0) }) {
+            matchingTunnel.tunnelProvider = tunnelProvider
+            matchingTunnel.refreshStatus()
+            return
+        }
+
+        // Tunnel was added outside the app.
+        let tunnel = TunnelContainer(tunnel: tunnelProvider)
+        tunnels.append(tunnel)
+        tunnels.sort { TunnelsManager.tunnelNameIsLessThan($0.name, $1.name) }
+        tunnelsListDelegate?.tunnelAdded(at: tunnels.firstIndex(of: tunnel)!)
     }
 
     func add(tunnelConfiguration: TunnelConfiguration, onDemandOption: ActivateOnDemandOption = .off, completionHandler: @escaping (Result<TunnelContainer, TunnelsManagerError>) -> Void) {

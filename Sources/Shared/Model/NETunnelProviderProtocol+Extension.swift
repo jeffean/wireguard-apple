@@ -25,7 +25,7 @@ extension NETunnelProviderProtocol {
         #if os(macOS)
         providerConfiguration = ["UID": getuid()]
         #elseif os(iOS)
-        providerConfiguration = ["TunnelName": name]
+        providerConfiguration = [TunnelProviderConfigurationMigrator.tunnelNameKey: name]
         #endif
 
         let endpoints = tunnelConfiguration.peers.compactMap { $0.endpoint }
@@ -55,7 +55,7 @@ extension NETunnelProviderProtocol {
     }
 
     var tunnelName: String? {
-        return providerConfiguration?["TunnelName"] as? String
+        return providerConfiguration?[TunnelProviderConfigurationMigrator.tunnelNameKey] as? String
     }
 
     func verifyConfigurationReference() -> Bool {
@@ -69,11 +69,17 @@ extension NETunnelProviderProtocol {
          * in the keychain. But it's still useful to keep the migration
          * around so that .mobileconfig files are easier.
          */
-        if let oldConfig = providerConfiguration?["WgQuickConfig"] as? String {
+        if let oldConfig = providerConfiguration?[TunnelProviderConfigurationMigrator.legacyConfigurationKey] as? String {
             #if os(macOS)
-            providerConfiguration = ["UID": getuid()]
+            var migratedProviderConfiguration = providerConfiguration ?? [:]
+            migratedProviderConfiguration.removeValue(forKey: TunnelProviderConfigurationMigrator.legacyConfigurationKey)
+            migratedProviderConfiguration["UID"] = getuid()
+            providerConfiguration = migratedProviderConfiguration
             #elseif os(iOS)
-            providerConfiguration = ["TunnelName": name]
+            providerConfiguration = TunnelProviderConfigurationMigrator.migrate(
+                providerConfiguration,
+                tunnelName: name
+            ).providerConfiguration
             #else
             #error("Unimplemented")
             #endif
@@ -109,10 +115,12 @@ extension NETunnelProviderProtocol {
             }
         }
 
-        if tunnelName != name {
-            var updatedProviderConfiguration = providerConfiguration ?? [:]
-            updatedProviderConfiguration["TunnelName"] = name
-            providerConfiguration = updatedProviderConfiguration
+        let providerConfigurationMigration = TunnelProviderConfigurationMigrator.migrate(
+            providerConfiguration,
+            tunnelName: name
+        )
+        if providerConfigurationMigration.didChange {
+            providerConfiguration = providerConfigurationMigration.providerConfiguration
             migrated = true
         }
         return migrated

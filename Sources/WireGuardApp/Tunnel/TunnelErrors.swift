@@ -7,6 +7,7 @@ enum TunnelsManagerError: WireGuardAppError {
     case tunnelNameEmpty
     case tunnelAlreadyExistsWithThatName
     case systemErrorOnListingTunnels(systemError: Error)
+    case systemErrorOnMigration(tunnelName: String, systemError: Error)
     case systemErrorOnAddTunnel(systemError: Error)
     case systemErrorOnModifyTunnel(systemError: Error)
     case systemErrorOnRemoveTunnel(systemError: Error)
@@ -19,6 +20,11 @@ enum TunnelsManagerError: WireGuardAppError {
             return (tr("alertTunnelAlreadyExistsWithThatNameTitle"), tr("alertTunnelAlreadyExistsWithThatNameMessage"))
         case .systemErrorOnListingTunnels(let systemError):
             return (tr("alertSystemErrorOnListingTunnelsTitle"), systemError.localizedUIString)
+        case .systemErrorOnMigration(let tunnelName, let systemError):
+            return (
+                tr("alertSystemErrorOnListingTunnelsTitle"),
+                "\(tunnelName): \(systemError.localizedUIString)"
+            )
         case .systemErrorOnAddTunnel(let systemError):
             return (tr("alertSystemErrorOnAddTunnelTitle"), systemError.localizedUIString)
         case .systemErrorOnModifyTunnel(let systemError):
