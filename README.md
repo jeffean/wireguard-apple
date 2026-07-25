@@ -32,6 +32,31 @@ $ open WireGuard.xcodeproj
 
 - Flip switches, press buttons, and make whirling noises until Xcode builds it.
 
+## iOS Home Screen Widget
+
+The iOS app includes small and medium Home Screen widgets. Each widget shows
+the current tunnel state as Connected, Connecting, Disconnecting, or
+Disconnected. It also shows the tunnel name while a tunnel is active or
+changing state.
+
+The app and Network Extension publish a shared status snapshot when the tunnel
+state changes. A changed snapshot requests a WidgetKit timeline reload.
+WidgetKit controls the reload schedule and may delay, combine, or throttle
+requests. State changes are not guaranteed to appear in the widget
+immediately.
+
+The iOS app, Network Extension, and Widget Extension must use the same
+registered App Group. The default identifier is `group.$(APP_ID_IOS)`. Enable
+this App Group for all three App IDs in the Apple Developer portal, then
+regenerate the related provisioning profiles. Set `DEVELOPMENT_TEAM` and
+`APP_ID_IOS` in `Sources/WireGuardApp/Config/Developer.xcconfig` before
+building.
+
+An unsigned simulator build verifies that the Widget Extension compiles and is
+embedded in the iOS app. It does not verify App Group access, provisioning, or
+WidgetKit reload behavior. Test those requirements with a signed build on a
+real device before release.
+
 ## WireGuardKit integration
 
 1. Open your Xcode project and add the Swift package with the following URL:
