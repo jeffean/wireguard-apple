@@ -35,3 +35,5 @@ swiftc \
     -o "$MIGRATION_TEST_BINARY"
 
 "$MIGRATION_TEST_BINARY"
+
+"$SCRIPT_DIR/check-project-membership.sh"

@@ -104,3 +104,22 @@ enum TunnelMigrationSaveCoordinator {
         }
     }
 }
+
+enum TunnelReloadBatchCoordinator {
+    static func finish(
+        migrationOperations: [TunnelMigrationSaveOperation],
+        maxAttempts: Int,
+        migrationCompletion: @escaping ([TunnelMigrationSaveFailure]) -> Void = { _ in },
+        integrate: @escaping () -> Void,
+        publish: @escaping () -> Void
+    ) {
+        TunnelMigrationSaveCoordinator.saveAllBeforeAvailability(
+            migrationOperations,
+            maxAttempts: maxAttempts
+        ) { failures in
+            migrationCompletion(failures)
+            integrate()
+            publish()
+        }
+    }
+}

@@ -11,6 +11,7 @@ private enum TunnelConfigurationMigrationTests {
         testMigrationSaveRetriesOnceThenSucceeds()
         testMigrationSaveReturnsExhaustedFailures()
         testAvailabilityWaitsForExhaustedAttempts()
+        testReloadBatchPublishesOnceAfterAllAsyncWorkAndIntegration()
         print("PASS: TunnelConfigurationMigrationTests")
     }
 
@@ -125,6 +126,48 @@ private enum TunnelConfigurationMigrationTests {
             availabilityFailures?.first?.tunnelName == "Work",
             "Availability continues after retry exhaustion with failures for logging"
         )
+    }
+
+    private static func testReloadBatchPublishesOnceAfterAllAsyncWorkAndIntegration() {
+        var saveCompletions: [(Error?) -> Void] = []
+        var integratedTunnelNames: [String] = []
+        var publishCount = 0
+        let operations = ["Home", "Office"].map { tunnelName in
+            TunnelMigrationSaveOperation(name: tunnelName) { completion in
+                saveCompletions.append(completion)
+            }
+        }
+
+        TunnelReloadBatchCoordinator.finish(
+            migrationOperations: operations,
+            maxAttempts: 2,
+            integrate: {
+                integratedTunnelNames = ["Home", "Office"]
+            },
+            publish: {
+                expect(
+                    integratedTunnelNames == ["Home", "Office"],
+                    "Aggregate status publishes after all providers are integrated"
+                )
+                publishCount += 1
+            }
+        )
+
+        expect(saveCompletions.count == 1, "The first async migration save starts")
+        expect(integratedTunnelNames.isEmpty, "Providers are not integrated before migration saves finish")
+        expect(publishCount == 0, "Aggregate status does not publish before async work finishes")
+
+        saveCompletions[0](nil)
+        expect(saveCompletions.count == 2, "The next async migration save starts")
+        expect(integratedTunnelNames.isEmpty, "Providers remain unavailable while async work remains")
+        expect(publishCount == 0, "Aggregate status remains unpublished while async work remains")
+
+        saveCompletions[1](nil)
+        expect(
+            integratedTunnelNames == ["Home", "Office"],
+            "All providers are integrated after migration saves finish"
+        )
+        expect(publishCount == 1, "Aggregate status publishes exactly once for the completed reload batch")
     }
 
     private static func expect(

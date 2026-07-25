@@ -98,17 +98,22 @@ class TunnelsManager {
         _ tunnelManagers: [NETunnelProviderManager],
         completion: @escaping ([TunnelMigrationSaveFailure]) -> Void
     ) {
-        let operations = tunnelManagers.map { tunnelManager in
+        TunnelMigrationSaveCoordinator.saveAllBeforeAvailability(
+            migrationSaveOperations(for: tunnelManagers),
+            maxAttempts: 2,
+            availabilityContinuation: completion
+        )
+    }
+
+    private static func migrationSaveOperations(
+        for tunnelManagers: [NETunnelProviderManager]
+    ) -> [TunnelMigrationSaveOperation] {
+        return tunnelManagers.map { tunnelManager in
             let tunnelName = tunnelManager.localizedDescription ?? "unknown"
             return TunnelMigrationSaveOperation(name: tunnelName) { saveCompletion in
                 tunnelManager.saveToPreferences(completionHandler: saveCompletion)
             }
         }
-        TunnelMigrationSaveCoordinator.saveAllBeforeAvailability(
-            operations,
-            maxAttempts: 2,
-            availabilityContinuation: completion
-        )
     }
 
     private static func logMigrationSaveFailures(
@@ -128,6 +133,7 @@ class TunnelsManager {
             guard let self = self else { return }
 
             let loadedTunnelProviders = managers ?? []
+            var migratedTunnelProviders: [NETunnelProviderManager] = []
 
             for (index, currentTunnel) in self.tunnels.enumerated().reversed() {
                 if !loadedTunnelProviders.contains(where: { $0.isEquivalentTo(currentTunnel) }) {
@@ -143,14 +149,27 @@ class TunnelsManager {
                         called: loadedTunnelProvider.localizedDescription ?? "unknown"
                     ) ?? false
                 if migrated {
-                    TunnelsManager.saveMigratedTunnelManagers([loadedTunnelProvider]) { [weak self] failures in
-                        TunnelsManager.logMigrationSaveFailures(failures, context: "during reload")
-                        self?.integrateReloadedTunnelProvider(loadedTunnelProvider)
-                    }
-                } else {
-                    self.integrateReloadedTunnelProvider(loadedTunnelProvider)
+                    migratedTunnelProviders.append(loadedTunnelProvider)
                 }
             }
+
+            TunnelReloadBatchCoordinator.finish(
+                migrationOperations: TunnelsManager.migrationSaveOperations(
+                    for: migratedTunnelProviders
+                ),
+                maxAttempts: 2,
+                migrationCompletion: { failures in
+                    TunnelsManager.logMigrationSaveFailures(failures, context: "during reload")
+                },
+                integrate: {
+                    loadedTunnelProviders.forEach(self.integrateReloadedTunnelProvider)
+                },
+                publish: {
+                    #if os(iOS)
+                    self.publishTunnelWidgetStatus()
+                    #endif
+                }
+            )
         }
     }
 
