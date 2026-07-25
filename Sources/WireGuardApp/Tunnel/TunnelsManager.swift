@@ -88,8 +88,8 @@ class TunnelsManager {
             }
             saveMigratedTunnelManagers(retainedMigratedManagers) { failures in
                 logMigrationSaveFailures(failures, context: "during create")
+                completionHandler(.success(TunnelsManager(tunnelProviders: tunnelManagers)))
             }
-            completionHandler(.success(TunnelsManager(tunnelProviders: tunnelManagers)))
         }
         #endif
     }
@@ -104,10 +104,10 @@ class TunnelsManager {
                 tunnelManager.saveToPreferences(completionHandler: saveCompletion)
             }
         }
-        TunnelMigrationSaveCoordinator.saveAll(
+        TunnelMigrationSaveCoordinator.saveAllBeforeAvailability(
             operations,
             maxAttempts: 2,
-            completion: completion
+            availabilityContinuation: completion
         )
     }
 
@@ -142,11 +142,13 @@ class TunnelsManager {
                     .migrateConfigurationIfNeeded(
                         called: loadedTunnelProvider.localizedDescription ?? "unknown"
                     ) ?? false
-                self.integrateReloadedTunnelProvider(loadedTunnelProvider)
                 if migrated {
-                    TunnelsManager.saveMigratedTunnelManagers([loadedTunnelProvider]) { failures in
+                    TunnelsManager.saveMigratedTunnelManagers([loadedTunnelProvider]) { [weak self] failures in
                         TunnelsManager.logMigrationSaveFailures(failures, context: "during reload")
+                        self?.integrateReloadedTunnelProvider(loadedTunnelProvider)
                     }
+                } else {
+                    self.integrateReloadedTunnelProvider(loadedTunnelProvider)
                 }
             }
         }

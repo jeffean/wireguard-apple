@@ -39,16 +39,16 @@ struct TunnelMigrationSaveFailure: Error {
 }
 
 enum TunnelMigrationSaveCoordinator {
-    static func saveAll(
+    static func saveAllBeforeAvailability(
         _ operations: [TunnelMigrationSaveOperation],
         maxAttempts: Int,
-        completion: @escaping ([TunnelMigrationSaveFailure]) -> Void
+        availabilityContinuation: @escaping ([TunnelMigrationSaveFailure]) -> Void
     ) {
         save(
             operations[...],
             maxAttempts: max(1, maxAttempts),
             failures: [],
-            completion: completion
+            completion: availabilityContinuation
         )
     }
 

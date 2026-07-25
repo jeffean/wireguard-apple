@@ -3,6 +3,8 @@ import Foundation
 @main
 private enum TunnelWidgetSnapshotTests {
     static func main() {
+        testProductionBootSessionIdentifier()
+
         let temporaryDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("TunnelWidgetSnapshotTests.\(UUID().uuidString)", isDirectory: true)
         let snapshotURL = temporaryDirectory.appendingPathComponent("snapshot.json")
@@ -94,6 +96,18 @@ private enum TunnelWidgetSnapshotTests {
         expect(store.load().status == .disconnected, "Invalid data falls back to disconnected")
 
         print("PASS: TunnelWidgetSnapshotTests")
+    }
+
+    private static func testProductionBootSessionIdentifier() {
+        let firstIdentifier = TunnelWidgetDarwinBootSessionIdentifierProvider().identifier()
+        let secondIdentifier = TunnelWidgetDarwinBootSessionIdentifierProvider().identifier()
+
+        expect(firstIdentifier != nil, "Darwin exposes a boot session identifier")
+        expect(firstIdentifier == secondIdentifier, "Boot session identifier is system-global")
+        expect(
+            firstIdentifier.flatMap(UUID.init(uuidString:)) != nil,
+            "Boot session identifier is a valid UUID"
+        )
     }
 
     private static func expect(

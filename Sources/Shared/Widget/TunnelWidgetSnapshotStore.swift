@@ -8,26 +8,66 @@ protocol TunnelWidgetTransitionClock {
     func now() -> TunnelWidgetTransitionOrder
 }
 
+protocol TunnelWidgetBootSessionIdentifierProvider {
+    func identifier() -> String?
+}
+
+struct TunnelWidgetDarwinBootSessionIdentifierProvider:
+    TunnelWidgetBootSessionIdentifierProvider
+{
+    func identifier() -> String? {
+        var requiredSize = 0
+        guard sysctlbyname("kern.bootsessionuuid", nil, &requiredSize, nil, 0) == 0,
+              requiredSize > 1
+        else {
+            return nil
+        }
+
+        var buffer = [CChar](repeating: 0, count: requiredSize + 1)
+        var actualSize = requiredSize
+        let result = buffer.withUnsafeMutableBytes { rawBuffer in
+            sysctlbyname(
+                "kern.bootsessionuuid",
+                rawBuffer.baseAddress,
+                &actualSize,
+                nil,
+                0
+            )
+        }
+        guard result == 0, actualSize > 0, actualSize <= requiredSize else {
+            return nil
+        }
+        return buffer.withUnsafeBufferPointer { pointer in
+            guard let baseAddress = pointer.baseAddress else {
+                return nil
+            }
+            return String(validatingCString: baseAddress)
+        }
+    }
+}
+
 struct TunnelWidgetSystemTransitionClock: TunnelWidgetTransitionClock {
-    private static let bootSessionIdentifier = resolveBootSessionIdentifier()
+    private static let fallbackBootSessionIdentifier = "unavailable-boot-session"
+
+    private let bootSessionIdentifier: String
+
+    init(
+        bootSessionIdentifierProvider: TunnelWidgetBootSessionIdentifierProvider =
+            TunnelWidgetDarwinBootSessionIdentifierProvider()
+    ) {
+        if let identifier = bootSessionIdentifierProvider.identifier() {
+            bootSessionIdentifier = identifier
+        } else {
+            assertionFailure("kern.bootsessionuuid is unavailable")
+            bootSessionIdentifier = Self.fallbackBootSessionIdentifier
+        }
+    }
 
     func now() -> TunnelWidgetTransitionOrder {
         TunnelWidgetTransitionOrder(
-            bootSessionIdentifier: Self.bootSessionIdentifier,
+            bootSessionIdentifier: bootSessionIdentifier,
             monotonicTimestamp: ProcessInfo.processInfo.systemUptime
         )
-    }
-
-    private static func resolveBootSessionIdentifier() -> String {
-        var bootTime = timeval()
-        var size = MemoryLayout<timeval>.size
-        if sysctlbyname("kern.boottime", &bootTime, &size, nil, 0) == 0 {
-            return "\(bootTime.tv_sec):\(bootTime.tv_usec)"
-        }
-
-        let estimatedBootDate =
-            Date().timeIntervalSince1970 - ProcessInfo.processInfo.systemUptime
-        return "estimated:\(Int(estimatedBootDate.rounded()))"
     }
 }
 

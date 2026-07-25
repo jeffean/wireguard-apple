@@ -10,6 +10,7 @@ private enum TunnelConfigurationMigrationTests {
         testMigrationSavesWaitForCompletion()
         testMigrationSaveRetriesOnceThenSucceeds()
         testMigrationSaveReturnsExhaustedFailures()
+        testAvailabilityWaitsForExhaustedAttempts()
         print("PASS: TunnelConfigurationMigrationTests")
     }
 
@@ -41,7 +42,10 @@ private enum TunnelConfigurationMigrationTests {
             saveCompletion = completion
         }
 
-        TunnelMigrationSaveCoordinator.saveAll([operation], maxAttempts: 2) { failures in
+        TunnelMigrationSaveCoordinator.saveAllBeforeAvailability(
+            [operation],
+            maxAttempts: 2
+        ) { failures in
             expect(failures.isEmpty, "Successful save has no exhausted failures")
             didComplete = true
         }
@@ -60,7 +64,10 @@ private enum TunnelConfigurationMigrationTests {
             completion(attempts == 1 ? firstError : nil)
         }
 
-        TunnelMigrationSaveCoordinator.saveAll([operation], maxAttempts: 2) { failures in
+        TunnelMigrationSaveCoordinator.saveAllBeforeAvailability(
+            [operation],
+            maxAttempts: 2
+        ) { failures in
             receivedFailures = failures
         }
 
@@ -77,7 +84,10 @@ private enum TunnelConfigurationMigrationTests {
             completion(expectedError)
         }
 
-        TunnelMigrationSaveCoordinator.saveAll([operation], maxAttempts: 2) { failures in
+        TunnelMigrationSaveCoordinator.saveAllBeforeAvailability(
+            [operation],
+            maxAttempts: 2
+        ) { failures in
             receivedFailures = failures
         }
 
@@ -87,6 +97,33 @@ private enum TunnelConfigurationMigrationTests {
         expect(
             (receivedFailures?.first?.underlyingError as NSError?) == expectedError,
             "Failure preserves the complete underlying error"
+        )
+    }
+
+    private static func testAvailabilityWaitsForExhaustedAttempts() {
+        let expectedError = NSError(domain: "MigrationTests", code: 8)
+        var attemptCompletions: [(Error?) -> Void] = []
+        var availabilityFailures: [TunnelMigrationSaveFailure]?
+        let operation = TunnelMigrationSaveOperation(name: "Work") { completion in
+            attemptCompletions.append(completion)
+        }
+
+        TunnelMigrationSaveCoordinator.saveAllBeforeAvailability(
+            [operation],
+            maxAttempts: 2
+        ) { failures in
+            availabilityFailures = failures
+        }
+
+        expect(attemptCompletions.count == 1, "First metadata save attempt starts")
+        expect(availabilityFailures == nil, "Availability waits for the first attempt")
+        attemptCompletions[0](expectedError)
+        expect(attemptCompletions.count == 2, "A second bounded attempt starts")
+        expect(availabilityFailures == nil, "Availability waits for the retry")
+        attemptCompletions[1](expectedError)
+        expect(
+            availabilityFailures?.first?.tunnelName == "Work",
+            "Availability continues after retry exhaustion with failures for logging"
         )
     }
 
