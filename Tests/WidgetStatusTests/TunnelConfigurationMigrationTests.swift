@@ -8,7 +8,8 @@ private enum TunnelConfigurationMigrationTests {
     static func main() {
         testProviderConfigurationMigration()
         testMigrationSavesWaitForCompletion()
-        testMigrationSaveFailureIncludesTunnelName()
+        testMigrationSaveRetriesOnceThenSucceeds()
+        testMigrationSaveReturnsExhaustedFailures()
         print("PASS: TunnelConfigurationMigrationTests")
     }
 
@@ -40,10 +41,9 @@ private enum TunnelConfigurationMigrationTests {
             saveCompletion = completion
         }
 
-        TunnelMigrationSaveCoordinator.saveAll([operation]) { result in
-            if case .success = result {
-                didComplete = true
-            }
+        TunnelMigrationSaveCoordinator.saveAll([operation], maxAttempts: 2) { failures in
+            expect(failures.isEmpty, "Successful save has no exhausted failures")
+            didComplete = true
         }
 
         expect(!didComplete, "Coordinator waits for saveToPreferences completion")
@@ -51,22 +51,41 @@ private enum TunnelConfigurationMigrationTests {
         expect(didComplete, "Coordinator completes after preferences are saved")
     }
 
-    private static func testMigrationSaveFailureIncludesTunnelName() {
+    private static func testMigrationSaveRetriesOnceThenSucceeds() {
+        let firstError = NSError(domain: "MigrationTests", code: 6)
+        var attempts = 0
+        var receivedFailures: [TunnelMigrationSaveFailure]?
+        let operation = TunnelMigrationSaveOperation(name: "Home") { completion in
+            attempts += 1
+            completion(attempts == 1 ? firstError : nil)
+        }
+
+        TunnelMigrationSaveCoordinator.saveAll([operation], maxAttempts: 2) { failures in
+            receivedFailures = failures
+        }
+
+        expect(attempts == 2, "A failed metadata save is retried once")
+        expect(receivedFailures?.isEmpty == true, "A successful retry clears the failure")
+    }
+
+    private static func testMigrationSaveReturnsExhaustedFailures() {
         let expectedError = NSError(domain: "MigrationTests", code: 7)
-        var receivedFailure: TunnelMigrationSaveFailure?
+        var attempts = 0
+        var receivedFailures: [TunnelMigrationSaveFailure]?
         let operation = TunnelMigrationSaveOperation(name: "Office") { completion in
+            attempts += 1
             completion(expectedError)
         }
 
-        TunnelMigrationSaveCoordinator.saveAll([operation]) { result in
-            if case let .failure(failure) = result {
-                receivedFailure = failure
-            }
+        TunnelMigrationSaveCoordinator.saveAll([operation], maxAttempts: 2) { failures in
+            receivedFailures = failures
         }
 
-        expect(receivedFailure?.tunnelName == "Office", "Failure identifies the tunnel")
+        expect(attempts == 2, "Metadata save retries are bounded")
+        expect(receivedFailures?.count == 1, "An exhausted save returns one failure for logging")
+        expect(receivedFailures?.first?.tunnelName == "Office", "Failure identifies the tunnel")
         expect(
-            (receivedFailure?.underlyingError as NSError?) == expectedError,
+            (receivedFailures?.first?.underlyingError as NSError?) == expectedError,
             "Failure preserves the complete underlying error"
         )
     }

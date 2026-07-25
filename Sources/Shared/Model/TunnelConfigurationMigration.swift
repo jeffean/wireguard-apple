@@ -41,33 +41,66 @@ struct TunnelMigrationSaveFailure: Error {
 enum TunnelMigrationSaveCoordinator {
     static func saveAll(
         _ operations: [TunnelMigrationSaveOperation],
-        completion: @escaping (Result<Void, TunnelMigrationSaveFailure>) -> Void
+        maxAttempts: Int,
+        completion: @escaping ([TunnelMigrationSaveFailure]) -> Void
     ) {
-        save(operations[...], completion: completion)
+        save(
+            operations[...],
+            maxAttempts: max(1, maxAttempts),
+            failures: [],
+            completion: completion
+        )
     }
 
     private static func save(
         _ operations: ArraySlice<TunnelMigrationSaveOperation>,
-        completion: @escaping (Result<Void, TunnelMigrationSaveFailure>) -> Void
+        maxAttempts: Int,
+        failures: [TunnelMigrationSaveFailure],
+        completion: @escaping ([TunnelMigrationSaveFailure]) -> Void
     ) {
         guard let operation = operations.first else {
-            completion(.success(()))
+            completion(failures)
             return
         }
 
+        attempt(operation, remainingAttempts: maxAttempts) { failure in
+            var updatedFailures = failures
+            if let failure {
+                updatedFailures.append(failure)
+            }
+            save(
+                operations.dropFirst(),
+                maxAttempts: maxAttempts,
+                failures: updatedFailures,
+                completion: completion
+            )
+        }
+    }
+
+    private static func attempt(
+        _ operation: TunnelMigrationSaveOperation,
+        remainingAttempts: Int,
+        completion: @escaping (TunnelMigrationSaveFailure?) -> Void
+    ) {
         operation.save { error in
-            if let error {
+            guard let error else {
+                completion(nil)
+                return
+            }
+            guard remainingAttempts > 1 else {
                 completion(
-                    .failure(
-                        TunnelMigrationSaveFailure(
-                            tunnelName: operation.name,
-                            underlyingError: error
-                        )
+                    TunnelMigrationSaveFailure(
+                        tunnelName: operation.name,
+                        underlyingError: error
                     )
                 )
                 return
             }
-            save(operations.dropFirst(), completion: completion)
+            attempt(
+                operation,
+                remainingAttempts: remainingAttempts - 1,
+                completion: completion
+            )
         }
     }
 }

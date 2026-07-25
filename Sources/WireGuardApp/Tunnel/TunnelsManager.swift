@@ -86,32 +86,17 @@ class TunnelsManager {
             let retainedMigratedManagers = migratedTunnelManagers.filter { migratedManager in
                 tunnelManagers.contains(where: { $0 === migratedManager })
             }
-            saveMigratedTunnelManagers(retainedMigratedManagers) { result in
-                switch result {
-                case .success:
-                    completionHandler(.success(TunnelsManager(tunnelProviders: tunnelManagers)))
-                case .failure(let failure):
-                    wg_log(
-                        .error,
-                        message: "Failed to save migrated tunnel '\(failure.tunnelName)': \(failure.underlyingError)"
-                    )
-                    completionHandler(
-                        .failure(
-                            TunnelsManagerError.systemErrorOnMigration(
-                                tunnelName: failure.tunnelName,
-                                systemError: failure.underlyingError
-                            )
-                        )
-                    )
-                }
+            saveMigratedTunnelManagers(retainedMigratedManagers) { failures in
+                logMigrationSaveFailures(failures, context: "during create")
             }
+            completionHandler(.success(TunnelsManager(tunnelProviders: tunnelManagers)))
         }
         #endif
     }
 
     private static func saveMigratedTunnelManagers(
         _ tunnelManagers: [NETunnelProviderManager],
-        completion: @escaping (Result<Void, TunnelMigrationSaveFailure>) -> Void
+        completion: @escaping ([TunnelMigrationSaveFailure]) -> Void
     ) {
         let operations = tunnelManagers.map { tunnelManager in
             let tunnelName = tunnelManager.localizedDescription ?? "unknown"
@@ -119,7 +104,23 @@ class TunnelsManager {
                 tunnelManager.saveToPreferences(completionHandler: saveCompletion)
             }
         }
-        TunnelMigrationSaveCoordinator.saveAll(operations, completion: completion)
+        TunnelMigrationSaveCoordinator.saveAll(
+            operations,
+            maxAttempts: 2,
+            completion: completion
+        )
+    }
+
+    private static func logMigrationSaveFailures(
+        _ failures: [TunnelMigrationSaveFailure],
+        context: String
+    ) {
+        for failure in failures {
+            wg_log(
+                .error,
+                message: "Failed to save migrated tunnel '\(failure.tunnelName)' \(context): \(failure.underlyingError)"
+            )
+        }
     }
 
     func reload() {
@@ -136,21 +137,17 @@ class TunnelsManager {
                 }
             }
             for loadedTunnelProvider in loadedTunnelProviders {
-                if let proto = loadedTunnelProvider.protocolConfiguration as? NETunnelProviderProtocol,
-                   proto.migrateConfigurationIfNeeded(called: loadedTunnelProvider.localizedDescription ?? "unknown") {
-                    loadedTunnelProvider.saveToPreferences { [weak self] error in
-                        if let error = error {
-                            wg_log(
-                                .error,
-                                message: "Failed to save migrated tunnel '\(loadedTunnelProvider.localizedDescription ?? "unknown")' during reload: \(error)"
-                            )
-                            return
-                        }
-                        self?.integrateReloadedTunnelProvider(loadedTunnelProvider)
-                    }
-                    continue
-                }
+                let migrated =
+                    (loadedTunnelProvider.protocolConfiguration as? NETunnelProviderProtocol)?
+                    .migrateConfigurationIfNeeded(
+                        called: loadedTunnelProvider.localizedDescription ?? "unknown"
+                    ) ?? false
                 self.integrateReloadedTunnelProvider(loadedTunnelProvider)
+                if migrated {
+                    TunnelsManager.saveMigratedTunnelManagers([loadedTunnelProvider]) { failures in
+                        TunnelsManager.logMigrationSaveFailures(failures, context: "during reload")
+                    }
+                }
             }
         }
     }
