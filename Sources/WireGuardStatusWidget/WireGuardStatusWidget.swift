@@ -11,21 +11,16 @@ struct WireGuardStatusWidgetEntry: TimelineEntry {
 
 struct WireGuardStatusWidgetProvider: TimelineProvider {
     func placeholder(in _: Context) -> WireGuardStatusWidgetEntry {
-        WireGuardStatusWidgetEntry(
-            date: Date(),
-            snapshot: TunnelWidgetSnapshot(
-                status: .connected,
-                tunnelName: "WireGuard",
-                updatedAt: Date()
-            )
-        )
+        sampleEntry()
     }
 
     func getSnapshot(
-        in _: Context,
+        in context: Context,
         completion: @escaping (WireGuardStatusWidgetEntry) -> Void
     ) {
-        completion(entry())
+        // The widget gallery shows a representative connected state instead
+        // of whatever the device happens to be doing right now.
+        completion(context.isPreview ? sampleEntry() : entry())
     }
 
     func getTimeline(
@@ -39,6 +34,18 @@ struct WireGuardStatusWidgetProvider: TimelineProvider {
         WireGuardStatusWidgetEntry(
             date: Date(),
             snapshot: TunnelWidgetSnapshotStore().load()
+        )
+    }
+
+    private func sampleEntry() -> WireGuardStatusWidgetEntry {
+        let now = Date()
+        return WireGuardStatusWidgetEntry(
+            date: now,
+            snapshot: TunnelWidgetSnapshot(
+                status: .connected,
+                tunnelName: "WireGuard",
+                updatedAt: now.addingTimeInterval(-42 * 60)
+            )
         )
     }
 }
@@ -55,7 +62,20 @@ struct WireGuardStatusWidget: Widget {
         }
         .configurationDisplayName("Tunnel Status")
         .description("See the current WireGuard tunnel status.")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .supportedFamilies(supportedFamilies)
+    }
+
+    private var supportedFamilies: [WidgetFamily] {
+        if #available(iOSApplicationExtension 16.0, *) {
+            return [
+                .systemSmall,
+                .systemMedium,
+                .accessoryCircular,
+                .accessoryRectangular,
+                .accessoryInline
+            ]
+        }
+        return [.systemSmall, .systemMedium]
     }
 }
 

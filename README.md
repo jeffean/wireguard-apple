@@ -34,10 +34,14 @@ $ open WireGuard.xcodeproj
 
 ## iOS Home Screen Widget
 
-The iOS app includes small and medium Home Screen widgets. Each widget shows
-the current tunnel state as Connected, Connecting, Disconnecting, or
-Disconnected. It also shows the tunnel name while a tunnel is active or
-changing state.
+The iOS app includes small and medium Home Screen widgets. On iOS 16 and
+later it also offers circular, rectangular, and inline Lock Screen widgets.
+Each widget shows the current tunnel state as Connected, Connecting,
+Disconnecting, or Disconnected. It also shows the tunnel name while a tunnel
+is active or changing state. While connected, the widget shows a live uptime
+timer that counts from the last time the shared snapshot changed to Connected.
+If the Network Extension stops without publishing a final state, the widget
+keeps the last published state until the app or extension publishes again.
 
 The app and Network Extension publish a shared status snapshot when the tunnel
 state changes. A changed snapshot requests a WidgetKit timeline reload.
