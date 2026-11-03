@@ -114,6 +114,7 @@
 		6F70E23D22109E15008BDFB4 /* WireGuardLoginItemHelper.app in Embed Login Item Helper */ = {isa = PBXBuildFile; fileRef = 6F70E22922106A2D008BDFB4 /* WireGuardLoginItemHelper.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		6F7774E1217181B1006A79B3 /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F7774DF217181B1006A79B3 /* MainViewController.swift */; };
 		6F7774E2217181B1006A79B3 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F7774E0217181B1006A79B3 /* AppDelegate.swift */; };
+		7A3000910000000000000000 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A3000900000000000000000 /* SceneDelegate.swift */; };
 		6F7774E421718281006A79B3 /* TunnelsListTableViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F7774E321718281006A79B3 /* TunnelsListTableViewController.swift */; };
 		6F7774EF21722D97006A79B3 /* TunnelsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F7774EE21722D97006A79B3 /* TunnelsManager.swift */; };
 		6F7774F321774263006A79B3 /* TunnelEditTableViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F7774F221774263006A79B3 /* TunnelEditTableViewController.swift */; };
@@ -377,6 +378,7 @@
 		6F70E23922109BEF008BDFB4 /* LoginItemHelper.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LoginItemHelper.entitlements; sourceTree = "<group>"; };
 		6F7774DF217181B1006A79B3 /* MainViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MainViewController.swift; sourceTree = "<group>"; };
 		6F7774E0217181B1006A79B3 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		7A3000900000000000000000 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		6F7774E321718281006A79B3 /* TunnelsListTableViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TunnelsListTableViewController.swift; sourceTree = "<group>"; };
 		6F7774EE21722D97006A79B3 /* TunnelsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TunnelsManager.swift; sourceTree = "<group>"; };
 		6F7774F221774263006A79B3 /* TunnelEditTableViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TunnelEditTableViewController.swift; sourceTree = "<group>"; };
@@ -664,6 +666,7 @@
 				5F4541A721C44F5B00994C13 /* View */,
 				5F4541AC21C4720B00994C13 /* ViewController */,
 				6F7774E0217181B1006A79B3 /* AppDelegate.swift */,
+				7A3000900000000000000000 /* SceneDelegate.swift */,
 				6F919EC2218A2AE90023B400 /* ErrorPresenter.swift */,
 				6F19D30322402B8700A126F2 /* ConfirmationAlertPresenter.swift */,
 				5F45417C21C1B23600994C13 /* UITableViewCell+Reuse.swift */,
@@ -1534,6 +1537,7 @@
 				6F8F0D7422267AD2000E8335 /* ChevronCell.swift in Sources */,
 				6F61F1E921B932F700483816 /* WireGuardAppError.swift in Sources */,
 				6F7774E2217181B1006A79B3 /* AppDelegate.swift in Sources */,
+				7A3000910000000000000000 /* SceneDelegate.swift in Sources */,
 				6FDEF80021863C0100D8FBF6 /* ioapi.c in Sources */,
 				6F7F7E5F21C7D74B00527607 /* TunnelErrors.swift in Sources */,
 				6FDEF7FC21863B6100D8FBF6 /* zip.c in Sources */,
