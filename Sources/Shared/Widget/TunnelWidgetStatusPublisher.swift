@@ -20,21 +20,23 @@ struct TunnelWidgetStatusCandidate {
 
     let state: State
     let tunnelName: String
+    var route: TunnelWidgetRouteSummary?
 }
 
 struct TunnelWidgetResolvedStatus: Equatable {
     let status: TunnelWidgetStatus
     let tunnelName: String?
+    var route: TunnelWidgetRouteSummary?
 }
 
 enum TunnelWidgetStatusResolver {
     static func resolve(_ candidates: [TunnelWidgetStatusCandidate]) -> TunnelWidgetResolvedStatus {
         if let active = candidates.first(where: { $0.state == .active }) {
-            return TunnelWidgetResolvedStatus(status: .connected, tunnelName: active.tunnelName)
+            return TunnelWidgetResolvedStatus(status: .connected, tunnelName: active.tunnelName, route: active.route)
         }
 
         if let deactivating = candidates.first(where: { $0.state == .deactivating }) {
-            return TunnelWidgetResolvedStatus(status: .disconnecting, tunnelName: deactivating.tunnelName)
+            return TunnelWidgetResolvedStatus(status: .disconnecting, tunnelName: deactivating.tunnelName, route: deactivating.route)
         }
 
         if let connecting = candidates.first(where: {
@@ -45,7 +47,7 @@ enum TunnelWidgetStatusResolver {
                 return false
             }
         }) {
-            return TunnelWidgetResolvedStatus(status: .connecting, tunnelName: connecting.tunnelName)
+            return TunnelWidgetResolvedStatus(status: .connecting, tunnelName: connecting.tunnelName, route: connecting.route)
         }
 
         return TunnelWidgetResolvedStatus(status: .disconnected, tunnelName: nil)
@@ -56,17 +58,48 @@ enum TunnelWidgetStatusResolver {
     enum TunnelWidgetStatusPublisher {
         static let widgetKind = "TunnelStatusWidget"
 
-        static func publish(status: TunnelWidgetStatus, tunnelName: String?) {
+        static func publish(
+            status: TunnelWidgetStatus,
+            tunnelName: String?,
+            route: TunnelWidgetRouteSummary? = nil
+        ) {
             let invocationDate = Date()
             let store = TunnelWidgetSnapshotStore()
             guard store.saveIfChanged(
                 status: status,
                 tunnelName: tunnelName,
+                route: route,
                 now: invocationDate
             ) else {
                 return
             }
             WidgetCenter.shared.reloadTimelines(ofKind: widgetKind)
+        }
+    }
+
+    extension TunnelWidgetRouteSummary {
+        init(tunnelConfiguration: TunnelConfiguration) {
+            let peers = tunnelConfiguration.peers.map { peer -> TunnelWidgetPeerRoutes in
+                let endpointHost: String?
+                switch peer.endpoint?.host {
+                case .name(let hostname, _):
+                    endpointHost = hostname
+                case .ipv4(let address):
+                    endpointHost = "\(address)"
+                case .ipv6(let address):
+                    endpointHost = "\(address)"
+                default:
+                    endpointHost = nil
+                }
+                return TunnelWidgetPeerRoutes(
+                    allowedIPs: peer.allowedIPs.map(\.stringRepresentation),
+                    endpointHost: endpointHost
+                )
+            }
+            self = TunnelWidgetRouteSummarizer.summarize(
+                peers: peers,
+                dnsServers: tunnelConfiguration.interface.dns.map(\.stringRepresentation)
+            )
         }
     }
 #endif

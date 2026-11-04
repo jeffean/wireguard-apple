@@ -639,12 +639,19 @@ class TunnelsManager {
             case .waiting:
                 state = .waiting
             }
-            return TunnelWidgetStatusCandidate(state: state, tunnelName: tunnel.name)
+            return TunnelWidgetStatusCandidate(
+                state: state,
+                tunnelName: tunnel.name,
+                route: state == .inactive
+                    ? nil
+                    : tunnel.tunnelConfiguration.map(TunnelWidgetRouteSummary.init(tunnelConfiguration:))
+            )
         }
         let resolvedStatus = TunnelWidgetStatusResolver.resolve(candidates)
         TunnelWidgetStatusPublisher.publish(
             status: resolvedStatus.status,
-            tunnelName: resolvedStatus.tunnelName
+            tunnelName: resolvedStatus.tunnelName,
+            route: resolvedStatus.route
         )
     }
     #endif

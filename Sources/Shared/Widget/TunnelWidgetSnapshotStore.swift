@@ -133,6 +133,7 @@ final class TunnelWidgetSnapshotFileBackend: TunnelWidgetSnapshotBackend {
             let contentChanged =
                 existingSnapshot?.status != snapshot.status
                     || existingSnapshot?.tunnelName != snapshot.tunnelName
+                    || existingSnapshot?.route != snapshot.route
             let snapshotToPersist: TunnelWidgetSnapshot
             if contentChanged {
                 snapshotToPersist = snapshot
@@ -140,6 +141,7 @@ final class TunnelWidgetSnapshotFileBackend: TunnelWidgetSnapshotBackend {
                 snapshotToPersist = TunnelWidgetSnapshot(
                     status: existingSnapshot.status,
                     tunnelName: existingSnapshot.tunnelName,
+                    route: existingSnapshot.route,
                     updatedAt: existingSnapshot.updatedAt,
                     transitionOrder: snapshot.transitionOrder
                 )
@@ -207,12 +209,14 @@ final class TunnelWidgetSnapshotStore {
     func saveIfChanged(
         status: TunnelWidgetStatus,
         tunnelName: String?,
+        route: TunnelWidgetRouteSummary? = nil,
         now: Date = Date()
     ) -> Bool {
         let saveResult = backend.save(
             TunnelWidgetSnapshot(
                 status: status,
                 tunnelName: tunnelName,
+                route: route,
                 updatedAt: now,
                 transitionOrder: transitionClock.now()
             )

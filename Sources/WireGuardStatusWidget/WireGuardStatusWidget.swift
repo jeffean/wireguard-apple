@@ -43,7 +43,11 @@ struct WireGuardStatusWidgetProvider: TimelineProvider {
             date: now,
             snapshot: TunnelWidgetSnapshot(
                 status: .connected,
-                tunnelName: "WireGuard",
+                tunnelName: "Office VPN",
+                route: TunnelWidgetRouteSummarizer.summarize(
+                    peers: [TunnelWidgetPeerRoutes(allowedIPs: ["0.0.0.0/0", "::/0"], endpointHost: "vpn.example.com")],
+                    dnsServers: ["10.0.0.53"]
+                ),
                 updatedAt: now.addingTimeInterval(-42 * 60)
             )
         )

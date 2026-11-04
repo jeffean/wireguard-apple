@@ -27,6 +27,14 @@ struct TunnelStatusContentView: View {
         StatusStyle(status: snapshot.status)
     }
 
+    private var route: RouteDisplay? {
+        snapshot.route.map(RouteDisplay.init(summary:))
+    }
+
+    private var isActive: Bool {
+        snapshot.status != .disconnected
+    }
+
     var body: some View {
         if #available(iOSApplicationExtension 16.0, *) {
             switch family {
@@ -50,71 +58,113 @@ struct TunnelStatusContentView: View {
 
     // MARK: - Home Screen
 
+    @ViewBuilder
     private var smallView: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            StatusBadge(style: style, diameter: 44)
-            Spacer(minLength: 8)
-            Text(style.title)
-                .font(.system(.title3, design: .rounded).weight(.bold))
-                .foregroundColor(.primary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
-            detailText
-                .font(.subheadline.weight(.medium))
-                .padding(.top, 1)
-            if let connectedSince {
-                Label {
-                    Text(connectedSince, style: .timer)
-                        .monospacedDigit()
-                } icon: {
-                    Image(systemName: "clock")
+        if isActive {
+            VStack(alignment: .leading, spacing: 0) {
+                StatusCaption(style: style, connectedSince: connectedSince, timerFont: .caption.weight(.semibold))
+                Text(verbatim: tunnelName)
+                    .font(.system(.title3, design: .rounded).weight(.bold))
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .padding(.top, 6)
+                if let route {
+                    RoutePill(route: route, style: style, isCompact: true)
+                        .padding(.top, 4)
                 }
-                .font(.caption.weight(.semibold))
-                .foregroundColor(style.tint)
-                .lineLimit(1)
-                .padding(.top, 6)
+                Spacer(minLength: 4)
+                VStack(alignment: .leading, spacing: 3) {
+                    ForEach(Array((route?.details ?? []).prefix(2))) { detail in
+                        DetailLine(detail: detail)
+                    }
+                }
             }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
-    }
-
-    private var mediumView: some View {
-        HStack(spacing: 14) {
-            StatusBadge(style: style, diameter: 56)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("WireGuard")
-                    .font(.caption.weight(.semibold))
-                    .foregroundColor(.secondary)
-                Text(style.title)
-                    .font(.system(.title2, design: .rounded).weight(.bold))
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .accessibilityElement(children: .combine)
+        } else {
+            VStack(alignment: .leading, spacing: 0) {
+                StatusBadge(style: style, diameter: 40)
+                Spacer(minLength: 8)
+                Text("Not connected")
+                    .font(.system(.title3, design: .rounded).weight(.bold))
                     .foregroundColor(.primary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
-                detailText
+                Text("No active tunnel")
                     .font(.subheadline.weight(.medium))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                    .padding(.top, 1)
             }
-            Spacer(minLength: 8)
-            if let connectedSince {
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text("Uptime")
-                        .font(.caption.weight(.semibold))
-                        .foregroundColor(.secondary)
-                    Text(connectedSince, style: .timer)
-                        .font(.system(.title3, design: .rounded).weight(.semibold))
-                        .monospacedDigit()
-                        .foregroundColor(style.tint)
-                        .multilineTextAlignment(.trailing)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .accessibilityElement(children: .combine)
+        }
+    }
+
+    @ViewBuilder
+    private var mediumView: some View {
+        if isActive {
+            VStack(alignment: .leading, spacing: 0) {
+                StatusCaption(
+                    style: style,
+                    connectedSince: connectedSince,
+                    timerFont: .system(.title3, design: .rounded).weight(.semibold)
+                )
+                HStack(spacing: 8) {
+                    Text(verbatim: tunnelName)
+                        .font(.system(.title2, design: .rounded).weight(.bold))
+                        .foregroundColor(.primary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
+                    if let route {
+                        RoutePill(route: route, style: style, isCompact: false)
+                            .fixedSize()
+                    }
                 }
-                // WidgetKit reports a timer's ideal width as unbounded, so it
-                // needs an explicit width instead of fixedSize().
-                .frame(width: 92, alignment: .trailing)
+                Spacer(minLength: 6)
+                detailGrid
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .accessibilityElement(children: .combine)
+        } else {
+            HStack(spacing: 14) {
+                StatusBadge(style: style, diameter: 52)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("WireGuard")
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(.secondary)
+                    Text("Not connected")
+                        .font(.system(.title2, design: .rounded).weight(.bold))
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                    Text("No active tunnel")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .accessibilityElement(children: .combine)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
+    }
+
+    private var detailGrid: some View {
+        let details = Array((route?.details ?? []).prefix(4))
+        let leading = details.enumerated().filter { $0.offset.isMultiple(of: 2) }.map(\.element)
+        let trailing = details.enumerated().filter { !$0.offset.isMultiple(of: 2) }.map(\.element)
+        return HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(leading) { DetailLine(detail: $0, font: .footnote.weight(.medium)) }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(trailing) { DetailLine(detail: $0, font: .footnote.weight(.medium)) }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 
     // MARK: - Lock Screen
@@ -135,18 +185,31 @@ struct TunnelStatusContentView: View {
     private var rectangularView: some View {
         VStack(alignment: .leading, spacing: 1) {
             Label {
-                Text(style.title)
+                if isActive {
+                    Text(verbatim: tunnelName)
+                } else {
+                    Text("Not connected")
+                }
             } icon: {
                 Image(systemName: style.symbolName)
             }
             .font(.headline)
+            .lineLimit(1)
             .widgetAccentable()
-            detailText
-                .font(.subheadline)
+            if isActive, let route {
+                (Text(route.shortTitle) + Text(verbatim: " · ") + route.dnsText)
+                    .font(.subheadline)
+                    .lineLimit(1)
+                    .privacySensitive()
+            }
             if let connectedSince {
                 Text(connectedSince, style: .timer)
                     .font(.subheadline)
                     .monospacedDigit()
+                    .foregroundColor(.secondary)
+            } else {
+                Text(isActive ? style.title : "No active tunnel")
+                    .font(.subheadline)
                     .foregroundColor(.secondary)
             }
         }
@@ -157,10 +220,12 @@ struct TunnelStatusContentView: View {
     @available(iOSApplicationExtension 16.0, *)
     private var inlineView: some View {
         Label {
-            if snapshot.status == .disconnected {
-                Text(style.title)
+            if !isActive {
+                Text("Not connected")
+            } else if let route {
+                Text(verbatim: tunnelName) + Text(verbatim: " · ") + Text(route.shortTitle)
             } else {
-                Text(style.title) + Text(" · ") + Text(verbatim: tunnelName)
+                Text(verbatim: tunnelName) + Text(verbatim: " · ") + Text(style.title)
             }
         } icon: {
             Image(systemName: style.symbolName)
@@ -168,20 +233,6 @@ struct TunnelStatusContentView: View {
     }
 
     // MARK: - Shared Pieces
-
-    @ViewBuilder
-    private var detailText: some View {
-        if snapshot.status == .disconnected {
-            Text("No active tunnel")
-                .foregroundColor(.secondary)
-                .lineLimit(1)
-        } else {
-            Text(verbatim: tunnelName)
-                .foregroundColor(.secondary)
-                .lineLimit(1)
-                .truncationMode(.tail)
-        }
-    }
 
     private var tunnelName: String {
         guard let tunnelName = snapshot.tunnelName, !tunnelName.isEmpty else {
@@ -200,6 +251,149 @@ struct TunnelStatusContentView: View {
             return nil
         }
         return snapshot.updatedAt
+    }
+}
+
+/// Display strings and detail rows for a route summary.
+struct RouteDisplay {
+    struct Detail: Identifiable {
+        let id: String
+        let symbolName: String
+        let text: Text
+        let isWarning: Bool
+    }
+
+    let shortTitle: LocalizedStringKey
+    let longTitle: Text
+    let symbolName: String
+    let dnsText: Text
+    let details: [Detail]
+
+    init(summary: TunnelWidgetRouteSummary) {
+        let dnsText: Text
+        if let firstServer = summary.dnsServers.first {
+            let extraCount = summary.dnsServers.count - 1
+            dnsText = extraCount > 0
+                ? Text("DNS \(firstServer) +\(extraCount)")
+                : Text("DNS \(firstServer)")
+        } else {
+            dnsText = Text("System DNS")
+        }
+        self.dnsText = dnsText
+
+        let endpoint = summary.endpointHost.map {
+            Detail(id: "endpoint", symbolName: "server.rack", text: Text(verbatim: $0), isWarning: false)
+        }
+        let dns = Detail(id: "dns", symbolName: "text.magnifyingglass", text: dnsText, isWarning: false)
+        let ipv6 = summary.routesIPv6
+            ? Detail(id: "ipv6", symbolName: "checkmark.shield", text: Text("IPv4 + IPv6"), isWarning: false)
+            : Detail(id: "ipv6", symbolName: "exclamationmark.triangle", text: Text("IPv6 not tunneled"), isWarning: true)
+
+        switch summary.mode {
+        case .allTraffic:
+            shortTitle = "All traffic"
+            longTitle = Text("All traffic")
+            symbolName = "globe"
+            details = [endpoint, dns, ipv6].compactMap { $0 }
+        case .allTrafficExcludingLAN:
+            shortTitle = "All traffic"
+            longTitle = Text("All traffic")
+            symbolName = "globe"
+            let lan = Detail(id: "lan", symbolName: "house", text: Text("LAN excluded"), isWarning: false)
+            details = [endpoint, dns, lan, ipv6].compactMap { $0 }
+        case .split:
+            shortTitle = "Split"
+            longTitle = summary.routeCount == 1
+                ? Text("Split · 1 route")
+                : Text("Split · \(summary.routeCount) routes")
+            symbolName = "arrow.triangle.branch"
+            let extraRoutes = summary.routeCount - 1
+            let routeText: Text? = summary.firstRoute.map { firstRoute in
+                extraRoutes > 0 ? Text(verbatim: "\(firstRoute) +\(extraRoutes)") : Text(verbatim: firstRoute)
+            }
+            let routes = routeText.map {
+                Detail(id: "routes", symbolName: "arrow.triangle.branch", text: $0, isWarning: false)
+            }
+            let internet = Detail(id: "internet", symbolName: "globe", text: Text("Internet direct"), isWarning: false)
+            details = [routes, dns, endpoint, internet].compactMap { $0 }
+        }
+    }
+}
+
+struct StatusCaption: View {
+    let style: StatusStyle
+    let connectedSince: Date?
+    let timerFont: Font
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 5) {
+            Circle()
+                .fill(style.tint)
+                .frame(width: 7, height: 7)
+            Text(style.title)
+                .font(.caption.weight(.semibold))
+                .foregroundColor(style.tint)
+                .lineLimit(1)
+                .fixedSize()
+            if let connectedSince {
+                // WidgetKit reports a timer's ideal width as unbounded, so it
+                // fills the remaining width and aligns itself to the trailing edge.
+                Text(connectedSince, style: .timer)
+                    .font(timerFont)
+                    .monospacedDigit()
+                    .foregroundColor(style.tint)
+                    .multilineTextAlignment(.trailing)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+            } else {
+                Spacer(minLength: 0)
+            }
+        }
+        .widgetAccentableIfAvailable()
+    }
+}
+
+struct RoutePill: View {
+    let route: RouteDisplay
+    let style: StatusStyle
+    let isCompact: Bool
+
+    var body: some View {
+        Label {
+            if isCompact {
+                Text(route.shortTitle)
+            } else {
+                route.longTitle
+            }
+        } icon: {
+            Image(systemName: route.symbolName)
+        }
+        .font(.caption.weight(.semibold))
+        .lineLimit(1)
+        .foregroundColor(style.tint)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .background(Capsule().fill(style.tint.opacity(0.16)))
+    }
+}
+
+struct DetailLine: View {
+    let detail: RouteDisplay.Detail
+    var font: Font = .caption.weight(.medium)
+
+    var body: some View {
+        Label {
+            detail.text
+                .lineLimit(1)
+                .truncationMode(.middle)
+        } icon: {
+            Image(systemName: detail.symbolName)
+                .foregroundColor(detail.isWarning ? .orange : .secondary)
+        }
+        .font(font)
+        .foregroundColor(detail.isWarning ? .orange : .secondary)
+        .privacySensitive()
     }
 }
 

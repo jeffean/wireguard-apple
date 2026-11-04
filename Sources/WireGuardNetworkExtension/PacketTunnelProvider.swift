@@ -33,7 +33,12 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
 
         // Start the tunnel
         #if os(iOS)
-        TunnelWidgetStatusPublisher.publish(status: .connecting, tunnelName: tunnelProviderProtocol.tunnelName)
+        let widgetRoute = TunnelWidgetRouteSummary(tunnelConfiguration: tunnelConfiguration)
+        TunnelWidgetStatusPublisher.publish(
+            status: .connecting,
+            tunnelName: tunnelProviderProtocol.tunnelName,
+            route: widgetRoute
+        )
         #endif
         adapter.start(tunnelConfiguration: tunnelConfiguration) { adapterError in
             guard let adapterError = adapterError else {
@@ -42,7 +47,11 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
                 wg_log(.info, message: "Tunnel interface is \(interfaceName)")
 
                 #if os(iOS)
-                TunnelWidgetStatusPublisher.publish(status: .connected, tunnelName: tunnelProviderProtocol.tunnelName)
+                TunnelWidgetStatusPublisher.publish(
+                    status: .connected,
+                    tunnelName: tunnelProviderProtocol.tunnelName,
+                    route: widgetRoute
+                )
                 #endif
                 completionHandler(nil)
                 return
@@ -85,8 +94,12 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         wg_log(.info, staticMessage: "Stopping tunnel")
 
         #if os(iOS)
-        let tunnelName = (protocolConfiguration as? NETunnelProviderProtocol)?.tunnelName
-        TunnelWidgetStatusPublisher.publish(status: .disconnecting, tunnelName: tunnelName)
+        let tunnelProviderProtocol = protocolConfiguration as? NETunnelProviderProtocol
+        TunnelWidgetStatusPublisher.publish(
+            status: .disconnecting,
+            tunnelName: tunnelProviderProtocol?.tunnelName,
+            route: tunnelProviderProtocol?.asTunnelConfiguration().map(TunnelWidgetRouteSummary.init(tunnelConfiguration:))
+        )
         #endif
         adapter.stop { error in
             ErrorNotifier.removeLastErrorFile()

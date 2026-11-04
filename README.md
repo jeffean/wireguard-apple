@@ -36,12 +36,28 @@ $ open WireGuard.xcodeproj
 
 The iOS app includes small and medium Home Screen widgets. On iOS 16 and
 later it also offers circular, rectangular, and inline Lock Screen widgets.
-Each widget shows the current tunnel state as Connected, Connecting,
-Disconnecting, or Disconnected. It also shows the tunnel name while a tunnel
-is active or changing state. While connected, the widget shows a live uptime
-timer that counts from the last time the shared snapshot changed to Connected.
-If the Network Extension stops without publishing a final state, the widget
-keeps the last published state until the app or extension publishes again.
+While a tunnel is active or changing state, the widget leads with the tunnel
+name and shows where its traffic goes. The tunnel state (Connected,
+Connecting, or Disconnecting) appears as a colored caption above the name.
+While connected, the widget shows a live uptime timer that counts from the
+last time the shared snapshot changed to Connected.
+
+The routing summary comes from the tunnel configuration when the tunnel
+starts. It is not a live measurement of where packets exit.
+
+| Shown | Meaning |
+| --- | --- |
+| All traffic | The peers' `AllowedIPs` cover all of IPv4, for example `0.0.0.0/0` or `0.0.0.0/1` plus `128.0.0.0/1` |
+| All traffic, LAN excluded | The peers' `AllowedIPs` cover all public IPv4 ranges, as written by the Exclude private IPs option |
+| Split · N routes | Only some destinations use the tunnel. The first IPv4 route is shown with the number of other routes |
+| Endpoint | The endpoint host of the peer that carries the default route, or the first peer with an endpoint for split tunnels |
+| DNS | The first DNS server from the interface, or System DNS when none is set |
+| IPv6 not tunneled | The tunnel routes all IPv4 traffic but not `::/0`, so IPv6 traffic bypasses it |
+
+The endpoint, DNS, and route details are marked privacy sensitive, so iOS
+redacts them where it hides widget data on a locked device. If the Network
+Extension stops without publishing a final state, the widget keeps the last
+published state until the app or extension publishes again.
 
 The app and Network Extension publish a shared status snapshot when the tunnel
 state changes. A changed snapshot requests a WidgetKit timeline reload.

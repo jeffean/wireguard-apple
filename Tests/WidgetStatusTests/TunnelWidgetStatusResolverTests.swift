@@ -18,6 +18,17 @@ private enum TunnelWidgetStatusResolverTests {
             [TunnelWidgetStatusCandidate(state: .active, tunnelName: "Home")],
             equals: TunnelWidgetResolvedStatus(status: .connected, tunnelName: "Home")
         )
+        let route = TunnelWidgetRouteSummarizer.summarize(
+            peers: [TunnelWidgetPeerRoutes(allowedIPs: ["0.0.0.0/0"], endpointHost: "vpn.example.com")],
+            dnsServers: ["1.1.1.1"]
+        )
+        assertResolution(
+            [
+                TunnelWidgetStatusCandidate(state: .inactive, tunnelName: "Lab"),
+                TunnelWidgetStatusCandidate(state: .active, tunnelName: "Home", route: route)
+            ],
+            equals: TunnelWidgetResolvedStatus(status: .connected, tunnelName: "Home", route: route)
+        )
 
         for state in [
             TunnelWidgetStatusCandidate.State.activating,

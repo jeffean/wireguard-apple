@@ -6,6 +6,8 @@ private enum TunnelWidgetSnapshotTests {
         testProductionBootSessionIdentifier()
         testUnavailableBootSessionIdentity()
         testUnavailableOrderingAcceptsNewBootContent()
+        testRouteSummaries()
+        testRouteChangeIsContentChange()
 
         let temporaryDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("TunnelWidgetSnapshotTests.\(UUID().uuidString)", isDirectory: true)
@@ -98,6 +100,75 @@ private enum TunnelWidgetSnapshotTests {
         expect(store.load().status == .disconnected, "Invalid data falls back to disconnected")
 
         print("PASS: TunnelWidgetSnapshotTests")
+    }
+
+    private static func testRouteSummaries() {
+        let full = TunnelWidgetRouteSummarizer.summarize(
+            peers: [
+                TunnelWidgetPeerRoutes(allowedIPs: ["10.8.0.0/24"], endpointHost: "lab.example.com"),
+                TunnelWidgetPeerRoutes(allowedIPs: ["0.0.0.0/0", "::/0"], endpointHost: "exit.example.com")
+            ],
+            dnsServers: ["10.0.0.53"]
+        )
+        expect(full.mode == .allTraffic, "A default route means all traffic")
+        expect(full.endpointHost == "exit.example.com", "The exit endpoint is the peer with the default route")
+        expect(full.routesIPv6, "::/0 routes IPv6")
+        expect(full.dnsServers == ["10.0.0.53"], "DNS servers are kept")
+
+        let halves = TunnelWidgetRouteSummarizer.summarize(
+            peers: [TunnelWidgetPeerRoutes(allowedIPs: ["0.0.0.0/1", "128.0.0.0/1"], endpointHost: "203.0.113.5")],
+            dnsServers: []
+        )
+        expect(halves.mode == .allTraffic, "Two /1 halves cover all IPv4 traffic")
+        expect(!halves.routesIPv6, "IPv4-only routes leave IPv6 outside the tunnel")
+
+        let excludingLAN = TunnelWidgetRouteSummarizer.summarize(
+            peers: [
+                TunnelWidgetPeerRoutes(
+                    allowedIPs: ["::/0"] + TunnelWidgetRouteSummarizer.publicIPv4Ranges + ["10.0.0.53/32"],
+                    endpointHost: "vpn.example.com"
+                )
+            ],
+            dnsServers: ["10.0.0.53"]
+        )
+        expect(excludingLAN.mode == .allTrafficExcludingLAN, "Exclude private IPs is all traffic without LAN")
+        expect(excludingLAN.endpointHost == "vpn.example.com", "Excluded-LAN tunnels report their exit endpoint")
+
+        let split = TunnelWidgetRouteSummarizer.summarize(
+            peers: [TunnelWidgetPeerRoutes(allowedIPs: ["fd00::/64", "10.0.0.0/8", "192.168.50.0/24"], endpointHost: "lab.example.com")],
+            dnsServers: []
+        )
+        expect(split.mode == .split, "Private subnets are a split tunnel")
+        expect(split.firstRoute == "10.0.0.0/8", "Split tunnels show an IPv4 route first")
+        expect(split.routeCount == 3, "Split tunnels count every route")
+        expect(split.endpointHost == "lab.example.com", "Split tunnels fall back to the first endpoint")
+    }
+
+    private static func testRouteChangeIsContentChange() {
+        let snapshotURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("TunnelWidgetRouteTests.\(UUID().uuidString).json")
+        defer {
+            try? FileManager.default.removeItem(at: snapshotURL)
+        }
+        let backend = TunnelWidgetSnapshotFileBackend(fileURL: snapshotURL)
+        let store = TunnelWidgetSnapshotStore(backend: backend, transitionClock: NilTransitionClock())
+        let splitRoute = TunnelWidgetRouteSummarizer.summarize(
+            peers: [TunnelWidgetPeerRoutes(allowedIPs: ["10.0.0.0/8"], endpointHost: nil)],
+            dnsServers: []
+        )
+        let fullRoute = TunnelWidgetRouteSummarizer.summarize(
+            peers: [TunnelWidgetPeerRoutes(allowedIPs: ["0.0.0.0/0"], endpointHost: nil)],
+            dnsServers: []
+        )
+        let start = Date(timeIntervalSince1970: 1_000)
+        expect(store.saveIfChanged(status: .connected, tunnelName: "Home", route: splitRoute, now: start), "First route is saved")
+        expect(
+            !store.saveIfChanged(status: .connected, tunnelName: "Home", route: splitRoute, now: start.addingTimeInterval(60)),
+            "The same route is not a content change"
+        )
+        expect(backend.load()?.updatedAt == start, "An unchanged route keeps the connection start time")
+        expect(store.saveIfChanged(status: .connected, tunnelName: "Home", route: fullRoute, now: start.addingTimeInterval(120)), "A new route is a content change")
+        expect(backend.load()?.route == fullRoute, "The new route is stored")
     }
 
     private static func testProductionBootSessionIdentifier() {
@@ -242,6 +313,12 @@ private final class TestTransitionClock: TunnelWidgetTransitionClock {
 
 private struct UnavailableBootSessionIdentifierProvider: WidgetBootSessionProvider {
     func identifier() -> String? {
+        nil
+    }
+}
+
+private struct NilTransitionClock: TunnelWidgetTransitionClock {
+    func now() -> TunnelWidgetTransitionOrder? {
         nil
     }
 }
