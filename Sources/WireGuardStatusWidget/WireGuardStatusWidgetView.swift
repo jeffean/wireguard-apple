@@ -106,9 +106,11 @@ struct TunnelStatusContentView: View {
                         .foregroundColor(style.tint)
                         .multilineTextAlignment(.trailing)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                 }
-                .fixedSize()
-                .layoutPriority(1)
+                // WidgetKit reports a timer's ideal width as unbounded, so it
+                // needs an explicit width instead of fixedSize().
+                .frame(width: 92, alignment: .trailing)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
