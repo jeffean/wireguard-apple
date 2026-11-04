@@ -31,6 +31,9 @@ class TunnelsManager {
         tunnels = tunnelProviders.map { TunnelContainer(tunnel: $0) }.sorted { TunnelsManager.tunnelNameIsLessThan($0.name, $1.name) }
         startObservingTunnelStatuses()
         startObservingTunnelConfigurations()
+        #if os(iOS)
+        publishTunnelWidgetStatus()
+        #endif
     }
 
     static func create(completionHandler: @escaping (Result<TunnelsManager, TunnelsManagerError>) -> Void) {
@@ -47,13 +50,14 @@ class TunnelsManager {
             var tunnelManagers = managers ?? []
             var refs: Set<Data> = []
             var tunnelNames: Set<String> = []
+            var migratedTunnelManagers: [NETunnelProviderManager] = []
             for (index, tunnelManager) in tunnelManagers.enumerated().reversed() {
                 if let tunnelName = tunnelManager.localizedDescription {
                     tunnelNames.insert(tunnelName)
                 }
                 guard let proto = tunnelManager.protocolConfiguration as? NETunnelProviderProtocol else { continue }
                 if proto.migrateConfigurationIfNeeded(called: tunnelManager.localizedDescription ?? "unknown") {
-                    tunnelManager.saveToPreferences { _ in }
+                    migratedTunnelManagers.append(tunnelManager)
                 }
                 #if os(iOS)
                 let passwordRef = proto.verifyConfigurationReference() ? proto.passwordReference : nil
@@ -79,42 +83,118 @@ class TunnelsManager {
             #if os(iOS)
             RecentTunnelsTracker.cleanupTunnels(except: tunnelNames)
             #endif
-            completionHandler(.success(TunnelsManager(tunnelProviders: tunnelManagers)))
+            let retainedMigratedManagers = migratedTunnelManagers.filter { migratedManager in
+                tunnelManagers.contains { $0 === migratedManager }
+            }
+            saveMigratedTunnelManagers(retainedMigratedManagers) { failures in
+                logMigrationSaveFailures(failures, context: "during create")
+                completionHandler(.success(TunnelsManager(tunnelProviders: tunnelManagers)))
+            }
         }
         #endif
     }
 
-    func reload() {
-        NETunnelProviderManager.loadAllFromPreferences { [weak self] managers, _ in
-            guard let self = self else { return }
+    private static func saveMigratedTunnelManagers(
+        _ tunnelManagers: [NETunnelProviderManager],
+        completion: @escaping ([TunnelMigrationSaveFailure]) -> Void
+    ) {
+        TunnelMigrationSaveCoordinator.saveAllBeforeAvailability(
+            migrationSaveOperations(for: tunnelManagers),
+            maxAttempts: 2,
+            availabilityContinuation: completion
+        )
+    }
 
-            let loadedTunnelProviders = managers ?? []
-
-            for (index, currentTunnel) in self.tunnels.enumerated().reversed() {
-                if !loadedTunnelProviders.contains(where: { $0.isEquivalentTo(currentTunnel) }) {
-                    // Tunnel was deleted outside the app
-                    self.tunnels.remove(at: index)
-                    self.tunnelsListDelegate?.tunnelRemoved(at: index, tunnel: currentTunnel)
-                }
-            }
-            for loadedTunnelProvider in loadedTunnelProviders {
-                if let matchingTunnel = self.tunnels.first(where: { loadedTunnelProvider.isEquivalentTo($0) }) {
-                    matchingTunnel.tunnelProvider = loadedTunnelProvider
-                    matchingTunnel.refreshStatus()
-                } else {
-                    // Tunnel was added outside the app
-                    if let proto = loadedTunnelProvider.protocolConfiguration as? NETunnelProviderProtocol {
-                        if proto.migrateConfigurationIfNeeded(called: loadedTunnelProvider.localizedDescription ?? "unknown") {
-                            loadedTunnelProvider.saveToPreferences { _ in }
-                        }
-                    }
-                    let tunnel = TunnelContainer(tunnel: loadedTunnelProvider)
-                    self.tunnels.append(tunnel)
-                    self.tunnels.sort { TunnelsManager.tunnelNameIsLessThan($0.name, $1.name) }
-                    self.tunnelsListDelegate?.tunnelAdded(at: self.tunnels.firstIndex(of: tunnel)!)
-                }
+    private static func migrationSaveOperations(
+        for tunnelManagers: [NETunnelProviderManager]
+    ) -> [TunnelMigrationSaveOperation] {
+        return tunnelManagers.map { tunnelManager in
+            let tunnelName = tunnelManager.localizedDescription ?? "unknown"
+            return TunnelMigrationSaveOperation(name: tunnelName) { saveCompletion in
+                tunnelManager.saveToPreferences(completionHandler: saveCompletion)
             }
         }
+    }
+
+    private static func logMigrationSaveFailures(
+        _ failures: [TunnelMigrationSaveFailure],
+        context: String
+    ) {
+        for failure in failures {
+            wg_log(
+                .error,
+                message: "Failed to save migrated tunnel '\(failure.tunnelName)' \(context): \(failure.underlyingError)"
+            )
+        }
+    }
+
+    func reload() {
+        NETunnelProviderManager.loadAllFromPreferences { [weak self] managers, error in
+            guard let self = self else { return }
+
+            TunnelReloadResultGate.continueIfSuccessful(
+                error: error,
+                failure: { error in
+                    wg_log(
+                        .error,
+                        message: "Failed to reload tunnel provider managers: \(error)"
+                    )
+                },
+                success: {
+                    let loadedTunnelProviders = managers ?? []
+                    var migratedTunnelProviders: [NETunnelProviderManager] = []
+
+                    for (index, currentTunnel) in self.tunnels.enumerated().reversed()
+                        where !loadedTunnelProviders.contains(where: { $0.isEquivalentTo(currentTunnel) }) {
+                        // Tunnel was deleted outside the app
+                        self.tunnels.remove(at: index)
+                        self.tunnelsListDelegate?.tunnelRemoved(at: index, tunnel: currentTunnel)
+                    }
+                    for loadedTunnelProvider in loadedTunnelProviders {
+                        let migrated =
+                            (loadedTunnelProvider.protocolConfiguration as? NETunnelProviderProtocol)?
+                            .migrateConfigurationIfNeeded(
+                                called: loadedTunnelProvider.localizedDescription ?? "unknown"
+                            ) ?? false
+                        if migrated {
+                            migratedTunnelProviders.append(loadedTunnelProvider)
+                        }
+                    }
+
+                    TunnelReloadBatchCoordinator.finish(
+                        migrationOperations: TunnelsManager.migrationSaveOperations(
+                            for: migratedTunnelProviders
+                        ),
+                        maxAttempts: 2,
+                        migrationCompletion: { failures in
+                            TunnelsManager.logMigrationSaveFailures(failures, context: "during reload")
+                        },
+                        integrate: {
+                            loadedTunnelProviders.forEach(self.integrateReloadedTunnelProvider)
+                        },
+                        publish: {
+                            #if os(iOS)
+                            self.publishTunnelWidgetStatus()
+                            #endif
+                        }
+                    )
+                }
+            )
+        }
+    }
+
+    private func integrateReloadedTunnelProvider(_ tunnelProvider: NETunnelProviderManager) {
+        if let matchingTunnel = tunnels.first(where: { tunnelProvider.isEquivalentTo($0) }) {
+            matchingTunnel.tunnelProvider = tunnelProvider
+            matchingTunnel.refreshStatus()
+            return
+        }
+
+        // Tunnel was added outside the app.
+        let tunnel = TunnelContainer(tunnel: tunnelProvider)
+        tunnels.append(tunnel)
+        tunnels.sort { TunnelsManager.tunnelNameIsLessThan($0.name, $1.name) }
+        tunnelsListDelegate?.tunnelAdded(at: tunnels.firstIndex(of: tunnel)!)
     }
 
     func add(tunnelConfiguration: TunnelConfiguration, onDemandOption: ActivateOnDemandOption = .off, completionHandler: @escaping (Result<TunnelContainer, TunnelsManagerError>) -> Void) {
@@ -498,8 +578,14 @@ class TunnelsManager {
 
     private func startObservingTunnelStatuses() {
         statusObservationToken = NotificationCenter.default.observe(name: .NEVPNStatusDidChange, object: nil, queue: OperationQueue.main) { [weak self] statusChangeNotification in
-            guard let self = self,
-                let session = statusChangeNotification.object as? NETunnelProviderSession,
+            guard let self = self else { return }
+            #if os(iOS)
+            defer {
+                self.publishTunnelWidgetStatus()
+            }
+            #endif
+
+            guard let session = statusChangeNotification.object as? NETunnelProviderSession,
                 let tunnelProvider = session.manager as? NETunnelProviderManager,
                 let tunnel = self.tunnels.first(where: { $0.tunnelProvider == tunnelProvider }) else { return }
 
@@ -532,6 +618,43 @@ class TunnelsManager {
             tunnel.refreshStatus()
         }
     }
+
+    #if os(iOS)
+    private func publishTunnelWidgetStatus() {
+        let candidates = tunnels.map { tunnel in
+            let state: TunnelWidgetStatusCandidate.State
+            switch tunnel.status {
+            case .inactive:
+                state = .inactive
+            case .activating:
+                state = .activating
+            case .active:
+                state = .active
+            case .deactivating:
+                state = .deactivating
+            case .reasserting:
+                state = .reasserting
+            case .restarting:
+                state = .restarting
+            case .waiting:
+                state = .waiting
+            }
+            return TunnelWidgetStatusCandidate(
+                state: state,
+                tunnelName: tunnel.name,
+                route: state == .inactive
+                    ? nil
+                    : tunnel.tunnelConfiguration.map(TunnelWidgetRouteSummary.init(tunnelConfiguration:))
+            )
+        }
+        let resolvedStatus = TunnelWidgetStatusResolver.resolve(candidates)
+        TunnelWidgetStatusPublisher.publish(
+            status: resolvedStatus.status,
+            tunnelName: resolvedStatus.tunnelName,
+            route: resolvedStatus.route
+        )
+    }
+    #endif
 
     func startObservingTunnelConfigurations() {
         configurationsObservationToken = NotificationCenter.default.observe(name: .NEVPNConfigurationChange, object: nil, queue: OperationQueue.main) { [weak self] _ in

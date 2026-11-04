@@ -24,6 +24,8 @@ extension NETunnelProviderProtocol {
         }
         #if os(macOS)
         providerConfiguration = ["UID": getuid()]
+        #elseif os(iOS)
+        providerConfiguration = [TunnelProviderConfigurationMigrator.tunnelNameKey: name]
         #endif
 
         let endpoints = tunnelConfiguration.peers.compactMap { $0.endpoint }
@@ -52,6 +54,10 @@ extension NETunnelProviderProtocol {
         Keychain.deleteReference(called: ref)
     }
 
+    var tunnelName: String? {
+        return providerConfiguration?[TunnelProviderConfigurationMigrator.tunnelNameKey] as? String
+    }
+
     func verifyConfigurationReference() -> Bool {
         guard let ref = passwordReference else { return false }
         return Keychain.verifyReference(called: ref)
@@ -63,11 +69,17 @@ extension NETunnelProviderProtocol {
          * in the keychain. But it's still useful to keep the migration
          * around so that .mobileconfig files are easier.
          */
-        if let oldConfig = providerConfiguration?["WgQuickConfig"] as? String {
+        if let oldConfig = providerConfiguration?[TunnelProviderConfigurationMigrator.legacyConfigurationKey] as? String {
             #if os(macOS)
-            providerConfiguration = ["UID": getuid()]
+            var migratedProviderConfiguration = providerConfiguration ?? [:]
+            migratedProviderConfiguration.removeValue(forKey: TunnelProviderConfigurationMigrator.legacyConfigurationKey)
+            migratedProviderConfiguration["UID"] = getuid()
+            providerConfiguration = migratedProviderConfiguration
             #elseif os(iOS)
-            providerConfiguration = nil
+            providerConfiguration = TunnelProviderConfigurationMigrator.migrate(
+                providerConfiguration,
+                tunnelName: name
+            ).providerConfiguration
             #else
             #error("Unimplemented")
             #endif
@@ -82,6 +94,8 @@ extension NETunnelProviderProtocol {
             return true
         }
         #elseif os(iOS)
+        var migrated = false
+
         /* Update the stored reference from the old iOS 14 one to the canonical iOS 15 one.
          * The iOS 14 ones are 96 bits, while the iOS 15 ones are 160 bits. We do this so
          * that we can have fast set exclusion in deleteReferences safely. */
@@ -97,9 +111,19 @@ extension NETunnelProviderProtocol {
             if !newReference.elementsEqual(passwordReference!) {
                 wg_log(.info, message: "Migrating iOS 14-style keychain reference to iOS 15-style keychain reference for '\(name)'")
                 passwordReference = newReference
-                return true
+                migrated = true
             }
         }
+
+        let providerConfigurationMigration = TunnelProviderConfigurationMigrator.migrate(
+            providerConfiguration,
+            tunnelName: name
+        )
+        if providerConfigurationMigration.didChange {
+            providerConfiguration = providerConfigurationMigration.providerConfiguration
+            migrated = true
+        }
+        return migrated
         #endif
         return false
     }
