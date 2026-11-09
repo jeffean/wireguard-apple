@@ -51,6 +51,17 @@ enum TunnelWidgetRouteMode: String, Codable {
     case allTrafficExcludingLAN
     /// Only some destinations go through the tunnel.
     case split
+
+    /// Whether the tunnel carries all internet traffic, with or without the
+    /// local network excluded.
+    var coversAllTraffic: Bool {
+        switch self {
+        case .allTraffic, .allTrafficExcludingLAN:
+            return true
+        case .split:
+            return false
+        }
+    }
 }
 
 /// A display summary of where a tunnel sends traffic, derived from the

@@ -133,12 +133,15 @@ private enum TunnelWidgetSnapshotTests {
         )
         expect(excludingLAN.mode == .allTrafficExcludingLAN, "Exclude private IPs is all traffic without LAN")
         expect(excludingLAN.endpointHost == "vpn.example.com", "Excluded-LAN tunnels report their exit endpoint")
+        expect(full.mode.coversAllTraffic, "All traffic covers all traffic")
+        expect(excludingLAN.mode.coversAllTraffic, "Excluding LAN still covers all internet traffic")
 
         let split = TunnelWidgetRouteSummarizer.summarize(
             peers: [TunnelWidgetPeerRoutes(allowedIPs: ["fd00::/64", "10.0.0.0/8", "192.168.50.0/24"], endpointHost: "lab.example.com")],
             dnsServers: []
         )
         expect(split.mode == .split, "Private subnets are a split tunnel")
+        expect(!split.mode.coversAllTraffic, "A split tunnel does not cover all traffic")
         expect(split.firstRoute == "10.0.0.0/8", "Split tunnels show an IPv4 route first")
         expect(split.routeCount == 3, "Split tunnels count every route")
         expect(split.endpointHost == "lab.example.com", "Split tunnels fall back to the first endpoint")

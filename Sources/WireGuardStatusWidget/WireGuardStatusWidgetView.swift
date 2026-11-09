@@ -12,7 +12,7 @@ struct WireGuardStatusWidgetView: View {
     var body: some View {
         TunnelStatusContentView(snapshot: entry.snapshot, family: widgetFamily)
             .widgetContainerBackground(isAccessory: widgetFamily.isAccessory) {
-                StatusBackground(style: StatusStyle(status: entry.snapshot.status))
+                StatusBackground(style: StatusStyle(snapshot: entry.snapshot))
             }
     }
 }
@@ -24,7 +24,7 @@ struct TunnelStatusContentView: View {
     let family: WidgetFamily
 
     private var style: StatusStyle {
-        StatusStyle(status: snapshot.status)
+        StatusStyle(snapshot: snapshot)
     }
 
     private var route: RouteDisplay? {
@@ -403,8 +403,20 @@ struct StatusStyle {
     let tint: Color
     let isActive: Bool
 
-    init(status: TunnelWidgetStatus) {
+    init(snapshot: TunnelWidgetSnapshot) {
+        self.init(status: snapshot.status, routeMode: snapshot.route?.mode)
+    }
+
+    /// A connected tunnel that carries all internet traffic gets its own tint
+    /// and symbol so it stands apart from split tunnels at a glance, including
+    /// on the monochrome Lock Screen.
+    init(status: TunnelWidgetStatus, routeMode: TunnelWidgetRouteMode? = nil) {
         switch status {
+        case .connected where routeMode?.coversAllTraffic == true:
+            title = "Connected"
+            symbolName = "network.badge.shield.half.filled"
+            tint = Color(uiColor: .systemPurple)
+            isActive = true
         case .connected:
             title = "Connected"
             symbolName = "lock.shield.fill"

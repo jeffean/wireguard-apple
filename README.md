@@ -42,6 +42,12 @@ Connecting, or Disconnecting) appears as a colored caption above the name.
 While connected, the widget shows a live uptime timer that counts from the
 last time the shared snapshot changed to Connected.
 
+A connected split tunnel uses a green tint. A connected tunnel that carries all
+traffic, with or without the LAN excluded, uses a purple tint so a full tunnel
+stands out. Lock Screen widgets are usually monochrome, so they show a
+network shield symbol instead of the padlock shield for a full tunnel.
+Connecting and Disconnecting stay orange in both cases.
+
 The routing summary comes from the tunnel configuration when the tunnel
 starts. It is not a live measurement of where packets exit.
 
