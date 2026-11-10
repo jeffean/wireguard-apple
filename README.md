@@ -32,6 +32,14 @@ $ open WireGuard.xcodeproj
 
 - Flip switches, press buttons, and make whirling noises until Xcode builds it.
 
+## macOS Menu Bar Icon
+
+The menu bar icon turns light purple (`#C4A7E7`) when a connected tunnel routes all IPv4 traffic,
+including profiles that exclude the LAN. This uses the same route classification
+as the iOS widget. The colored icon uses a non-template image to preserve its
+color in the menu bar. Split tunnels keep the standard icon. Disconnected tunnels
+and connection transitions keep their original icons and animation.
+
 ## iOS Home Screen Widget
 
 The iOS app includes small and medium Home Screen widgets. On iOS 16 and
